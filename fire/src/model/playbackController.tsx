@@ -1,11 +1,10 @@
 import Editor from "../routes/editor";
 import { Media, Project, Segment, SegmentID, Source } from "./types";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { WebGLRenderer } from "./webgl";
 import { Route, BrowserRouter as Router, Switch, Redirect } from "react-router-dom";
 import About from "../routes/about";
 import ExportPage from "../routes/exportPage";
-import Login from "../routes/login";
 import Projects from "../routes/projects";
 
 export default function PlaybackController(props: {
@@ -53,23 +52,14 @@ export default function PlaybackController(props: {
   mediaListRef.current = props.mediaList;
   isPlayingRef.current = isPlaying;
 
-  const setCurrentTime = (timestamp: number) => {
+  const setCurrentTime = useCallback((timestamp: number) => {
     lastPlaybackTimeRef.current = timestamp;
     playbackStartTimeRef.current = performance.now();
     _setCurrentTime(timestamp);
     if (!isPlayingRef.current) renderFrame(false);
-  };
+  }, []);
 
-  useEffect(() => {
-    if (!isPlayingRef.current) renderFrame(false);
-  }, [props.trackList]);
-
-  useEffect(() => {
-    if (currentTime > props.projectDuration)
-      setCurrentTime(props.projectDuration);
-  }, [props.projectDuration]);
-
-  const renderFrame = async (update: boolean) => {
+  const renderFrame = useCallback(async (update: boolean) => {
     let curTime =
       performance.now() -
       playbackStartTimeRef.current +
@@ -86,7 +76,7 @@ export default function PlaybackController(props: {
     }
 
     let segments: Segment[] = [];
-    let elements: HTMLVideoElement[] = [];
+    let elements: (HTMLVideoElement | HTMLImageElement)[] = [];
     let needsSeek = false;
 
     for (let i = trackListRef.current.length - 1; i >= 0; i--) {
@@ -116,7 +106,10 @@ export default function PlaybackController(props: {
     for (const media of mediaListRef.current) {
       for (const source of media.sources) {
         if (!source.inUse) {
-          source.element.pause();
+          // Only call pause() on video elements, not images
+          if (source.element instanceof HTMLVideoElement) {
+            source.element.pause();
+          }
           source.inUse = true;
         }
       }
@@ -129,10 +122,14 @@ export default function PlaybackController(props: {
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
 
-        elements[i].pause();
+        // Only call pause() on video elements, not images
+        if (elements[i] instanceof HTMLVideoElement) {
+          elements[i].pause();
+        }
         let mediaTime = (curTime - segment.start + segment.mediaStart) / 1000;
 
-        if (elements[i].currentTime !== mediaTime) {
+        // Only set currentTime and handle seeking for video elements
+        if (elements[i] instanceof HTMLVideoElement && elements[i].currentTime !== mediaTime) {
           await new Promise<void>((resolve, reject) => {
             elements[i].onseeked = () => resolve();
             elements[i].currentTime = mediaTime;
@@ -140,7 +137,13 @@ export default function PlaybackController(props: {
         }
       }
       try {
-        await Promise.allSettled(elements.map((element) => element.play()));
+        await Promise.allSettled(elements.map((element) => {
+          // Only call play() on video elements
+          if (element instanceof HTMLVideoElement) {
+            return element.play();
+          }
+          return Promise.resolve();
+        }));
       } catch (error) { }
       lastPlaybackTimeRef.current = curTime;
       playbackStartTimeRef.current = performance.now();
@@ -153,7 +156,9 @@ export default function PlaybackController(props: {
 
     if (!isPlayingRef.current) {
       for (const element of elements) {
-        element.pause();
+        if (element && typeof element.pause === 'function') {
+          element.pause();
+        }
       }
       return;
     }
@@ -170,7 +175,16 @@ export default function PlaybackController(props: {
     (setTimeout(() => {
       renderFrame(true);
     }, 1 / props.projectFramerate) as unknown) as number;
-  };
+  }, [props.renderer, props.projectFramerate]);
+
+  useEffect(() => {
+    if (!isPlayingRef.current) renderFrame(false);
+  }, [props.trackList, renderFrame]);
+
+  useEffect(() => {
+    if (currentTime > props.projectDuration)
+      setCurrentTime(props.projectDuration);
+  }, [props.projectDuration, currentTime, setCurrentTime]);
 
   const play = async () => {
     if (currentTime >= projectDurationRef.current) return;
@@ -242,27 +256,24 @@ export default function PlaybackController(props: {
           <About></About>
         </Route>
         <Route path="/projects">
-          {props.projectUser != "" ? <Projects
-            projectUser={props.projectUser}
+          <Projects
+            projectUser="user"
             projects={props.projects}
             setProjects={props.setProjects}
-          /> : <Redirect to='/' />}
+          />
         </Route>
         <Route path="/editor">
-          {props.projectUser != "" ? <Editor
+          <Editor
             {...props}
             playVideo={play}
             pauseVideo={pause}
             isPlaying={isPlaying}
             currentTime={currentTime}
             setCurrentTime={setCurrentTime}
-          /> : <Redirect to='/' />}
+          />
         </Route>
         <Route path="/">
-          {props.projectUser === "" ? <Login
-            projectUser={props.projectUser}
-            setProjectUser={props.setProjectUser} />
-            : <Redirect to='/projects' />}
+          <Redirect to='/editor' />
         </Route>
       </Switch>
     </Router>

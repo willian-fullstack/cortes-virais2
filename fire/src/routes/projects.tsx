@@ -83,7 +83,7 @@ export default function Projects(props: { projectUser: string, projects: Project
       <div className={styles.sidebar}>
         <div className={styles.vbar}>
           <Link to="/">
-            <img className={styles.logo} src="/logo192.png" />
+            <img className={styles.logo} src="/logo192.png" alt="Logo" />
           </Link>
           <div>
             <h1>Fire</h1>
@@ -101,6 +101,7 @@ export default function Projects(props: { projectUser: string, projects: Project
       <div className={styles.main}>
         {props.projects.map((project, index) => {
           return <div
+            key={project._id || index}
             className={styles.projectBox}
             style={{
               backgroundImage: `url()`,

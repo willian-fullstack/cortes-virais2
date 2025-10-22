@@ -5,7 +5,7 @@ import axios from "axios";
 
 export default function ProjectManager() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [currentProject, setCurrentProject] = useState<number>(0);
+  const [currentProject] = useState<number>(0);
   const [projectUser, setProjectUser] = useState<string>("");
   const [projectId, setProjectId] = useState<string>("");
   const [projectName, setProjectName] = useState<string>("");

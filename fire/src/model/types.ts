@@ -1,6 +1,6 @@
 export interface Source {
     track: number;
-    element: HTMLVideoElement;
+    element: HTMLVideoElement | HTMLImageElement;
     inUse: boolean;
 }
 export interface Media {

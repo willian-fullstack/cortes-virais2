@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import styles from "./exportPage.module.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 declare global {
   interface HTMLCanvasElement {
@@ -11,6 +11,15 @@ declare global {
 export default function ExportPage(props: any) {
   const [load, setLoad] = useState<number>(0);
 
+  useEffect(() => {
+    if (props.trackList.length > 1) {
+      setLoad(0);
+      if (props.isRecordingRef.current) {
+        setLoad(Math.round((100 * props.currentTime) / props.projectDuration));
+      }
+    }
+  }, [props.trackList, props.isRecordingRef, props.currentTime, props.projectDuration]);
+
   function AddProject() {
     if (props.trackList.length > 1) {
       var segment;
@@ -19,10 +28,6 @@ export default function ExportPage(props: any) {
           segment = props.trackList[i][0];
         }
       }
-
-      setLoad(0);
-      if (props.isRecordingRef.current)
-        setLoad(Math.round((100 * props.currentTime) / props.projectDuration));
 
       return (
         <div className={styles.mediaList}>
@@ -57,7 +62,7 @@ export default function ExportPage(props: any) {
       <div className={styles.sidebar}>
         <div className={styles.vbar}>
           <Link to="/">
-            <img className={styles.logo} src="/logo192.png" />
+            <img className={styles.logo} src="/logo192.png" alt="Logo" />
           </Link>
           <div>
             <h1>Fire</h1>

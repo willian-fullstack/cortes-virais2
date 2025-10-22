@@ -24,7 +24,7 @@ export default function Properties({
   const [cropState, setCropState] = useState<boolean>(false);
   const [scaleState, setScaleState] = useState<boolean>(false);
 
-  const checkKeyframeExists = () => {
+  const checkKeyframeExists = (): number | false => {
     if (!segment) return false;
 
     for (let i = 0; i < segment.keyframes.length; i++) {
@@ -35,40 +35,40 @@ export default function Properties({
     return false;
   };
 
-  const checkPropState = (property: string): boolean => {
-    let currKeyframeIndex = checkKeyframeExists();
-    if (currKeyframeIndex === false) return false;
-    if (!segment) return false;
-
-    if (property === "position") {
-      if (
-        segment.keyframes[currKeyframeIndex].x !== undefined ||
-        segment.keyframes[currKeyframeIndex].y !== undefined
-      )
-        return true;
-    } else if (property === "scale") {
-      if (
-        segment.keyframes[currKeyframeIndex].scaleX !== undefined ||
-        segment.keyframes[currKeyframeIndex].scaleY !== undefined
-      )
-        return true;
-    } else if (property === "crop") {
-      if (
-        segment.keyframes[currKeyframeIndex].trimBottom !== undefined ||
-        segment.keyframes[currKeyframeIndex].trimTop !== undefined ||
-        segment.keyframes[currKeyframeIndex].trimLeft !== undefined ||
-        segment.keyframes[currKeyframeIndex].trimRight !== undefined
-      )
-        return true;
-    }
-    return false;
-  };
-
   useEffect(() => {
+    const checkPropState = (property: string): boolean => {
+      let currKeyframeIndex = checkKeyframeExists();
+      if (currKeyframeIndex === false) return false;
+      if (!segment) return false;
+
+      if (property === "position") {
+        if (
+          segment.keyframes[currKeyframeIndex].x !== undefined ||
+          segment.keyframes[currKeyframeIndex].y !== undefined
+        )
+          return true;
+      } else if (property === "scale") {
+        if (
+          segment.keyframes[currKeyframeIndex].scaleX !== undefined ||
+          segment.keyframes[currKeyframeIndex].scaleY !== undefined
+        )
+          return true;
+      } else if (property === "crop") {
+        if (
+          segment.keyframes[currKeyframeIndex].trimBottom !== undefined ||
+          segment.keyframes[currKeyframeIndex].trimTop !== undefined ||
+          segment.keyframes[currKeyframeIndex].trimLeft !== undefined ||
+          segment.keyframes[currKeyframeIndex].trimRight !== undefined
+        )
+          return true;
+      }
+      return false;
+    };
+
     setPositionState(checkPropState("position"));
     setCropState(checkPropState("crop"));
     setScaleState(checkPropState("scale"));
-  }, [currentTime]);
+  }, [currentTime, segment]);
 
   const _updateSegment = (args: any, property?: "position" | "scale" | "crop", isButtonPressed?: boolean) => {
     if (!segment || !selectedSegment) return false;
@@ -282,7 +282,7 @@ export default function Properties({
             type="number"
             step="10"
             onChange={event => _updateSegment({ x: +event.target.value }, "position")}
-            value={currKeyframe.x}
+            value={isFinite(currKeyframe.x) ? currKeyframe.x : 0}
           />
           <button
             className={styles.inputBtn}
@@ -303,7 +303,7 @@ export default function Properties({
             type="number"
             step="10"
             onChange={event => _updateSegment({ y: +event.target.value }, "position")}
-            value={currKeyframe.y}
+            value={isFinite(currKeyframe.y) ? currKeyframe.y : 0}
           />
           <button
             className={styles.inputBtn}
@@ -384,7 +384,7 @@ export default function Properties({
             step="0.1"
             min="0.0"
             onChange={(event) => _updateSegment({ scaleX: +event.target.value }, "scale")}
-            value={currKeyframe.scaleX}
+            value={isFinite(currKeyframe.scaleX) ? currKeyframe.scaleX : 1}
           />
           <button
             className={styles.inputBtn}
@@ -406,7 +406,7 @@ export default function Properties({
             step="0.1"
             min="0.0"
             onChange={event => _updateSegment({ scaleY: +event.target.value }, "scale")}
-            value={currKeyframe.scaleY}
+            value={isFinite(currKeyframe.scaleY) ? currKeyframe.scaleY : 1}
           />
           <button
             className={styles.inputBtn}
@@ -494,7 +494,7 @@ export default function Properties({
             min="0"
             max="1.0"
             onChange={(event) => _updateSegment({ trimLeft: +event.target.value },"crop")}
-            value={currKeyframe.trimLeft}
+            value={isFinite(currKeyframe.trimLeft) ? currKeyframe.trimLeft : 0}
           />
           <button
             className={styles.inputBtn}
@@ -517,7 +517,7 @@ export default function Properties({
             min="0"
             max="1.0"
             onChange={event => _updateSegment({ trimRight: +event.target.value }, "crop")}
-            value={currKeyframe.trimRight}
+            value={isFinite(currKeyframe.trimRight) ? currKeyframe.trimRight : 0}
           />
           <button
             className={styles.inputBtn}
@@ -540,7 +540,7 @@ export default function Properties({
             min="0"
             max="1.0"
             onChange={event => _updateSegment({ trimTop: +event.target.value })}
-            value={currKeyframe.trimTop}
+            value={isFinite(currKeyframe.trimTop) ? currKeyframe.trimTop : 0}
           />
           <button
             className={styles.inputBtn}
@@ -563,7 +563,7 @@ export default function Properties({
             min="0"
             max="1.0"
             onChange={event => _updateSegment({ trimBottom: +event.target.value })}
-            value={currKeyframe.trimBottom}
+            value={isFinite(currKeyframe.trimBottom) ? currKeyframe.trimBottom : 0}
           />
           <button
             className={styles.inputBtn}

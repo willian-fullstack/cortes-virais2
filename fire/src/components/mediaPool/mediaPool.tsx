@@ -7,8 +7,8 @@ const options = {
     types: [
         {
             accept: {
-                'videos/*': ['.mp4', '.mov', '.wmv', '.avi', '.flv'],
-                'images/*': ['.jpg', '.png', '.gif', '.jpeg']
+                'video/*': ['.mp4', '.mov', '.wmv', '.avi', '.flv'],
+                'image/*': ['.jpg', '.png', '.gif', '.jpeg']
             }
         },
     ],
@@ -20,21 +20,24 @@ export default function MediaPool(props: any) {
     const [status, setStatus] = useState<string>('');
     const [draggedOn, setDraggedOn] = useState<String>("");
 
+    const renderMediaItem = (item: Media, index: number, provided?: any) => (
+        <li className={`${styles.card}`}
+            ref={provided?.innerRef} 
+            {...provided?.draggableProps} 
+            {...provided?.dragHandleProps}
+        >
+            <img className={styles.img} src={item.thumbnail} alt={item.file.name} />
+            <p className={styles.cardCaption}>{item.file.name}</p>
+            <button className={styles.button} onClick={() => props.deleteVideo(item)}>
+                <span className="material-icons">delete</span>
+            </button>
+        </li>
+    );
+
     const listItems = props.mediaList.map((item: Media, index: number) => {
         return (
             <Draggable key={item.file.name} draggableId={item.file.name} index={index}>
-                {(provided) => (
-                    <li className={`${styles.card}`}
-                        key={item.file.name}
-                        ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                    >
-                        <img className={styles.img} src={item.thumbnail} alt={item.file.name} />
-                        <p className={styles.cardCaption}>{item.file.name}</p>
-                        <button className={styles.button} onClick={() => props.deleteVideo(item)}>
-                            <span className="material-icons">delete</span>
-                        </button>
-                    </li>
-                )}
+                {(provided) => renderMediaItem(item, index, provided)}
             </Draggable>
         );
     });
@@ -92,12 +95,17 @@ export default function MediaPool(props: any) {
                 </button>
             </div>
             <div className={styles.mediaList}>
-                    <Droppable droppableId="card">
+                    <Droppable 
+                        droppableId="card" 
+                        mode="virtual"
+                        renderClone={(provided, snapshot, rubric) => 
+                            renderMediaItem(props.mediaList[rubric.source.index], rubric.source.index, provided)
+                        }
+                    >
                         {
                             (provided) => (
                                 <ul className="card" {...provided.droppableProps} ref={provided.innerRef}>
                                     {listItems}
-                                    {provided.placeholder}
                                 </ul>
                         )}
                     </Droppable>

@@ -2,7 +2,6 @@
   grid-area: timeline;
   background: var(--timeline-background-color);
   padding: 0px 0px 0px 0px;
-  overflow: auto;
 }
 
 .tracks {

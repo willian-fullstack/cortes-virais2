@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { calculateProperties } from "../utils/utils";
 import PlaybackController from "./playbackController";
 import { Media, Project, Segment, SegmentID } from "./types";
@@ -25,8 +25,8 @@ export default function MediaManager(props: {
     const [mediaList, setMediaList] = useState<Media[]>([]);
     const [trackList, setTrackList] = useState<Segment[][]>([[]]);
     const [selectedSegment, setSelectedSegment] = useState<SegmentID | null>(null);
-    const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement>(document.createElement("canvas"));
-    const [renderer, setRenderer] = useState<WebGLRenderer>(new WebGLRenderer(canvasRef, props.projectWidth, props.projectHeight));
+    const [canvasRef] = useState<HTMLCanvasElement>(document.createElement("canvas"));
+    const [renderer] = useState<WebGLRenderer>(new WebGLRenderer(canvasRef, props.projectWidth, props.projectHeight));
 
     useEffect(() => {
         canvasRef.width = props.projectWidth;
@@ -41,39 +41,83 @@ export default function MediaManager(props: {
         }
 
         props.setProjectDuration(duration);
-    }, [trackList]);
+    }, [trackList, props]);
 
     const thumbnailCanvas = document.createElement("canvas");
     const thumbnailCanvasContext = thumbnailCanvas.getContext("2d") as CanvasRenderingContext2D;
 
     const generateThumbnail = async (file: File) => {
-        let elm = document.createElement("video") as HTMLVideoElement;
-        elm.preload = "auto";
+        if (file.type.startsWith('image/')) {
+            // Handle images
+            let img = document.createElement("img") as HTMLImageElement;
+            
+            await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject();
+                img.src = URL.createObjectURL(file);
+            });
 
-        await new Promise<void>((resolve, reject) => {
-            elm.onloadeddata = () => resolve();
-            elm.src = URL.createObjectURL(file);
-            elm.currentTime = 0.0001;
-        });
+            // Generate Thumbnail for image
+            thumbnailCanvas.width = img.naturalWidth;
+            thumbnailCanvas.height = img.naturalHeight;
+            thumbnailCanvasContext.drawImage(
+                img,
+                0,
+                0,
+                img.naturalWidth,
+                img.naturalHeight
+            );
 
-        // Generate Thumbnail
-        thumbnailCanvas.width = elm.videoWidth;
-        thumbnailCanvas.height = elm.videoHeight;
-        thumbnailCanvasContext.drawImage(
-            elm,
-            0,
-            0,
-            elm.videoWidth,
-            elm.videoHeight
-        );
+            let media: Media = {
+                sources: [{ track: 0, element: img as any, inUse: false }],
+                file: file,
+                thumbnail: thumbnailCanvas.toDataURL(),
+            };
 
-        let media: Media = {
-            sources: [{ track: 0, element: elm, inUse: false }],
-            file: file,
-            thumbnail: thumbnailCanvas.toDataURL(),
-        };
+            return media;
+        } else {
+            // Handle videos
+            let elm = document.createElement("video") as HTMLVideoElement;
+            elm.preload = "auto";
 
-        return media;
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Video loading timeout'));
+                }, 10000); // 10 second timeout
+
+                elm.onloadeddata = () => {
+                    clearTimeout(timeout);
+                    resolve();
+                };
+                
+                elm.onerror = () => {
+                    clearTimeout(timeout);
+                    reject(new Error('Video loading error'));
+                };
+
+                elm.src = URL.createObjectURL(file);
+                elm.currentTime = 0.0001;
+            });
+
+            // Generate Thumbnail for video
+            thumbnailCanvas.width = elm.videoWidth;
+            thumbnailCanvas.height = elm.videoHeight;
+            thumbnailCanvasContext.drawImage(
+                elm,
+                0,
+                0,
+                elm.videoWidth,
+                elm.videoHeight
+            );
+
+            let media: Media = {
+                sources: [{ track: 0, element: elm, inUse: false }],
+                file: file,
+                thumbnail: thumbnailCanvas.toDataURL(),
+            };
+
+            return media;
+        }
     };
 
     const addVideo = async (files: File[]) => {
@@ -92,22 +136,50 @@ export default function MediaManager(props: {
 
         let filesList: Media[] = [];
 
-        for (let file of uniqueFiles) {
-            filesList.push(await generateThumbnail(file));
+        try {
+            for (let file of uniqueFiles) {
+                try {
+                    const media = await generateThumbnail(file);
+                    filesList.push(media);
+                } catch (error) {
+                    console.error(`Failed to load file ${file.name}:`, error);
+                    alert(`Failed to load file: ${file.name}. Please try again or use a different file.`);
+                }
+            }
+
+            if (filesList.length > 0) {
+                setMediaList([...mediaList, ...filesList]);
+                console.log("Successfully Loaded Segment Thumbnail!");
+            }
+        } catch (error) {
+            console.error("Error loading files:", error);
         }
 
-        setMediaList([...mediaList, ...filesList]);
-
-        console.log("Sucessfully Loaded Segment Thumbnail!");
         return;
     }
 
     const dragAndDrop = (media: Media) => {
         if (renderer == null) return;
+        
+        // Handle different media types
+        let duration = 0;
+        let newElement: HTMLVideoElement | HTMLImageElement;
+        
+        if (media.file.type.startsWith('image/')) {
+            // For images, set a default duration (e.g., 5 seconds)
+            duration = 5000; // 5 seconds in milliseconds
+            newElement = media.sources[0].element.cloneNode() as HTMLImageElement;
+        } else {
+            // For videos, use the actual duration
+            duration = (media.sources[0].element as HTMLVideoElement).duration * 1000;
+            newElement = media.sources[0].element.cloneNode() as HTMLVideoElement;
+            (newElement as HTMLVideoElement).pause();
+        }
+        
         let segment: Segment = {
             media: media,
             start: 0,
-            duration: media.sources[0].element.duration * 1000,
+            duration: duration,
             mediaStart: 0,
             texture: renderer.createTexture(),
             keyframes: [
@@ -125,9 +197,6 @@ export default function MediaManager(props: {
             ]
         };
 
-        let newElement = media.sources[0].element.cloneNode() as HTMLVideoElement;
-        newElement.pause();
-
         if (trackList[trackList.length - 1].length === 0) {
             if (!media.sources.find(source => source.track === trackList.length - 1))
                 media.sources.push({ track: trackList.length - 1, element: newElement, inUse: false });
@@ -140,7 +209,10 @@ export default function MediaManager(props: {
 
     const deleteVideo = (media: Media) => {
         for (const source of media.sources) {
-            source.element.pause();
+            // Only call pause() on video elements, not images
+            if (source.element instanceof HTMLVideoElement) {
+                source.element.pause();
+            }
         }
 
         if (selectedSegment && trackList[selectedSegment.track][selectedSegment.index].media === media) setSelectedSegment(null);
@@ -159,7 +231,10 @@ export default function MediaManager(props: {
         if (selectedSegment === null) return;
 
         for (const source of trackList[selectedSegment.track][selectedSegment.index].media.sources) {
-            source.element.pause();
+            // Only call pause() on video elements, not images
+            if (source.element instanceof HTMLVideoElement) {
+                source.element.pause();
+            }
         }
 
         let newTrackList = [

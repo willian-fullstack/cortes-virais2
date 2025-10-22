@@ -75,7 +75,7 @@ export class WebGLRenderer {
         this.context.bufferData(this.context.ARRAY_BUFFER, new Float32Array(texcoords), this.context.STATIC_DRAW);
     }
 
-    public drawSegments(segments: Segment[], elements: HTMLVideoElement[], timestamp: number) {
+    public drawSegments(segments: Segment[], elements: (HTMLVideoElement | HTMLImageElement)[], timestamp: number) {
         // Tell WebGL how to convert from clip space to pixels
         this.context.viewport(0, 0, this.projectWidth, this.projectHeight);
         this.context.clear(this.context.COLOR_BUFFER_BIT);
@@ -140,7 +140,7 @@ export class WebGLRenderer {
 
     // Unlike images, textures do not have a width and height associated
     // with them so we'll pass in the width and height of the texture
-    private drawImage(segment: Segment, element: HTMLVideoElement, properties: KeyFrame) {
+    private drawImage(segment: Segment, element: HTMLVideoElement | HTMLImageElement, properties: KeyFrame) {
         if (properties.scaleX as number <= 0 ||
             properties.scaleY as number <= 0 ||
             (properties.trimLeft as number) + (properties.trimRight as number) >= 1 ||
@@ -179,8 +179,21 @@ export class WebGLRenderer {
         // this matirx will convert from pixels to clip space
         let matrix = m4.ortho(0, this.context.canvas.width, this.context.canvas.height, 0, -1, 1);
 
-        let newWidth = element.videoWidth * (properties.scaleX as number);
-        let newHeight = element.videoHeight * (properties.scaleY as number);
+        // Get dimensions based on element type
+        let elementWidth: number;
+        let elementHeight: number;
+        
+        if (element instanceof HTMLVideoElement) {
+            elementWidth = element.videoWidth;
+            elementHeight = element.videoHeight;
+        } else {
+            // For images, use naturalWidth/naturalHeight
+            elementWidth = element.naturalWidth;
+            elementHeight = element.naturalHeight;
+        }
+
+        let newWidth = elementWidth * (properties.scaleX as number);
+        let newHeight = elementHeight * (properties.scaleY as number);
 
         // this matrix will translate our quad to dstX, dstY
 

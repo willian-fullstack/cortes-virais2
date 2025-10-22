@@ -1,6 +1,6 @@
 import styles from "./timeline.module.css";
 import { Segment, SegmentID } from "../../model/types";
-import { useState, MouseEvent, useRef, useEffect } from "react";
+import { useState, MouseEvent, useRef, useEffect, useCallback } from "react";
 import { lerp } from "../../utils/utils";
 import { Droppable } from 'react-beautiful-dnd';
 
@@ -104,7 +104,7 @@ export default function Timeline({
         }
     };
 
-    const genTrack = (segments: Segment[], trackInd: number) => {
+    const genTrack = useCallback((segments: Segment[], trackInd: number) => {
         let segmentDivs = [];
 
         for (let i = 0; i < segments.length; i++) {
@@ -113,10 +113,10 @@ export default function Timeline({
             const isSelected = selectedSegment !== null && selectedSegment.track === trackInd && selectedSegment.index === i;
 
             let space = segment.start - (i === 0 ? 0 : (segments[i - 1].start + segments[i - 1].duration));
-            segmentDivs.push(<div style={{ flex: `0 0 ${space * scaleFactor}px` }}></div>);
+            segmentDivs.push(<div key={`space-${trackInd}-${i}`} style={{ flex: `0 0 ${space * scaleFactor}px` }}></div>);
 
             segmentDivs.push(
-                <div className={`${styles.fullCard}`}
+                <div key={`segment-${trackInd}-${i}`} className={`${styles.fullCard}`}
                     style={{
                         flex: `0 0 ${segment.duration * scaleFactor - 4}px`
                     }}
@@ -153,10 +153,11 @@ export default function Timeline({
                     >
                     </div>
                     {isSelected ? <div className={`${styles.keyframeCard}`}>
-                        {segment.keyframes.map((keyframe) => {
+                        {segment.keyframes.map((keyframe, keyframeIndex) => {
                             if (segment.keyframes.length > 1) {
                                 return (
                                     <button
+                                        key={`keyframe-${keyframeIndex}-${keyframe.start}`}
                                         style={{
                                             transform: `translateX(${(keyframe.start) * scaleFactor}px) rotate(45deg)`
                                         }}
@@ -182,25 +183,7 @@ export default function Timeline({
         }
 
         return segmentDivs;
-    }
-
-    useEffect(() => {
-        setTrackDivs(trackList.map((track, ind) => <div className={styles.track}>{genTrack(track, ind)}</div>));
-    }, [trackList, selectedSegment, scaleFactor]);
-
-    useEffect(() => {
-        let listener = (event: globalThis.MouseEvent) => {
-            if (event.button === 0 && clickStartTimeRef.current !== -1) {
-                event.stopPropagation();
-                event.preventDefault();
-                setDragMode(DragMode.NONE);
-                clickStartTimeRef.current = -1;
-            }
-        }
-
-        document.addEventListener("mouseup", listener);
-        return () => { document.removeEventListener("mouseup", listener); };
-    }, [])
+    }, [selectedSegment, scaleFactor, setSelectedSegment, setCurrentTime, trackList]);
 
     const setDragMode = (mode: DragMode) => {
         dragMode.current = mode;
@@ -215,6 +198,24 @@ export default function Timeline({
             document.body.style.cursor = "";
         }
     }
+
+    useEffect(() => {
+        setTrackDivs(trackList.map((track, ind) => <div key={`track-${ind}`} className={styles.track}>{genTrack(track, ind)}</div>));
+    }, [trackList, selectedSegment, scaleFactor, genTrack]);
+
+    useEffect(() => {
+        let listener = (event: globalThis.MouseEvent) => {
+            if (event.button === 0 && clickStartTimeRef.current !== -1) {
+                event.stopPropagation();
+                event.preventDefault();
+                setDragMode(DragMode.NONE);
+                clickStartTimeRef.current = -1;
+            }
+        }
+
+        document.addEventListener("mouseup", listener);
+        return () => { document.removeEventListener("mouseup", listener); };
+    }, [setDragMode, DragMode.NONE])
 
     const clamp = (value: number, min: number, max: number) => {
         return Math.max(min, Math.min(max, value));
@@ -272,8 +273,11 @@ export default function Timeline({
             // Setup new element for track
             if (track !== selectedSegment.track) {
                 if (!segment.media.sources.find(source => source.track === track)) {
-                    let newElement = segment.media.sources[0].element.cloneNode() as HTMLVideoElement;
-                    newElement.pause();
+                    let newElement = segment.media.sources[0].element.cloneNode() as HTMLVideoElement | HTMLImageElement;
+                    // Only call pause() on video elements, not images
+                    if (newElement instanceof HTMLVideoElement) {
+                        newElement.pause();
+                    }
                     segment.media.sources.push({ track: track, element: newElement, inUse: false });
                 }
             }
@@ -306,7 +310,16 @@ export default function Timeline({
             setTrackList(newTrackList);
             setSelectedSegment({ track: track, index: insertedInd });
         } else if (dragMode.current === DragMode.TRIM_LEFT) {
-            change = clamp(change, -segment.mediaStart, Math.min(segment.media.sources[0].element.duration * 1000 - segment.mediaStart, segment.duration));
+            // Handle images vs videos differently for duration
+            let maxDuration = 0;
+            if (segment.media.sources[0].element instanceof HTMLVideoElement) {
+                maxDuration = segment.media.sources[0].element.duration * 1000;
+            } else {
+                // For images, allow unlimited expansion (or set a reasonable max like project duration)
+                maxDuration = projectDuration;
+            }
+            
+            change = clamp(change, -segment.mediaStart, Math.min(maxDuration - segment.mediaStart, segment.duration));
 
             if (selectedSegment.index > 0) {
                 change = Math.max(change, -segment.start + trackList[selectedSegment.track][selectedSegment.index - 1].start +
@@ -315,7 +328,16 @@ export default function Timeline({
 
             updateSegment(selectedSegment, { ...segment, start: segment.start + change, mediaStart: segment.mediaStart + change, duration: segment.duration - change });
         } else if (dragMode.current === DragMode.TRIM_RIGHT) {
-            change = clamp(change, -segment.duration, segment.media.sources[0].element.duration * 1000 - segment.mediaStart - segment.duration);
+            // Handle images vs videos differently for duration
+            let maxDuration = 0;
+            if (segment.media.sources[0].element instanceof HTMLVideoElement) {
+                maxDuration = segment.media.sources[0].element.duration * 1000;
+            } else {
+                // For images, allow expansion up to the end of the project or a reasonable limit
+                maxDuration = projectDuration;
+            }
+            
+            change = clamp(change, -segment.duration, maxDuration - segment.mediaStart - segment.duration);
 
             if (selectedSegment.index < trackList[selectedSegment.track].length - 1) {
                 change = Math.min(change, trackList[selectedSegment.track][selectedSegment.index + 1].start - segment.start - segment.duration);
@@ -340,7 +362,13 @@ export default function Timeline({
             onMouseMove={onMouseMove}
             ref={containerRef}
         >
-        <Droppable droppableId="timeline">
+        <Droppable 
+            droppableId="timeline" 
+            mode="virtual"
+            renderClone={(provided, snapshot, rubric) => (
+                <div>Virtual clone placeholder</div>
+            )}
+        >
         {
             (provided) => (
                 <div className="timeline" {...provided.droppableProps} ref={provided.innerRef} >
@@ -354,7 +382,6 @@ export default function Timeline({
                         </div>
                         {trackDivs}
                     </div>
-                {provided.placeholder}
                 </div>
                 )
             }

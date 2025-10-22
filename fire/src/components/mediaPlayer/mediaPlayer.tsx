@@ -17,7 +17,7 @@ export default function MediaPlayer({
     //@ts-ignore
     canvasRef.style.aspectRatio = `${projectWidth / projectHeight}`;
     ref.current?.appendChild(canvasRef);
-  }, []);
+  }, [canvasRef, projectWidth, projectHeight]);
 
   return <div className={styles.container} ref={ref}></div>;
 }

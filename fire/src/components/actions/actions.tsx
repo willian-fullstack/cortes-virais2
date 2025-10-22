@@ -2,7 +2,6 @@ import styles from "./actions.module.css";
 import { useHistory } from "react-router-dom";
 import { Media, Segment } from "../../model/types";
 import axios from "axios";
-import { GoogleLogout } from "react-google-login";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
@@ -71,24 +70,9 @@ export default function Actions(props: {
 
             <Link to="/projects">
             <button className={styles.button}>
-                <img className={styles.logo} src="/logo192.png" />
+                <img className={styles.logo} src="/logo192.png" alt="Logo" />
             </button>
             </Link>
-            <GoogleLogout
-                clientId="956647101334-784vc8rakg2kbaeil4gug1ukefc9vehk.apps.googleusercontent.com"
-                render={(renderProps) => (
-                    <button
-                        className={styles.button}
-                        title="Logout"
-                        onClick={renderProps.onClick}
-                        disabled={renderProps.disabled}
-                    >
-                        <span className="material-icons">logout</span>
-                    </button>
-                )}
-                buttonText="Logout"
-                onLogoutSuccess={() => {props.setProjectUser(""); history.push("/")}}
-            ></GoogleLogout>
             <Link to="/export">
             <button className={styles.button} title="Export">
                 <span className="material-icons">save_alt</span>
