@@ -43,7 +43,7 @@ export default function Timeline({
     const COLOR_MULTIPLER = 0.5;
     const timeout = useRef<number>(0);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [trackDivs, setTrackDivs] = useState<JSX.Element[]>([]);
+    const [trackDivs, setTrackDivs] = useState<React.JSX.Element[]>([]);
     const segmentStartOffsetRef = useRef<number>(0);
     const clickStartTimeRef = useRef<number>(-1);
     const dragMode = useRef<DragMode>(DragMode.NONE);
@@ -189,7 +189,7 @@ export default function Timeline({
         }
 
         return segmentDivs;
-    }, [selectedSegment, scaleFactor, setSelectedSegment, setCurrentTime, trackList]);
+    }, [selectedSegment, scaleFactor, setSelectedSegment, setCurrentTime, trackList, COLORS]);
 
     const duplicateNeedle = () => {
         if (setNeedles) {
@@ -226,7 +226,7 @@ export default function Timeline({
 
     useEffect(() => {
         setTrackDivs(trackList.map((track, ind) => <div key={`track-${ind}`} className={styles.track}>{genTrack(track, ind)}</div>));
-    }, [trackList, selectedSegment, scaleFactor, genTrack]);
+    }, [trackList, selectedSegment, scaleFactor]);
 
     // Expose functions to parent component
     useEffect(() => {
@@ -253,7 +253,7 @@ export default function Timeline({
 
         document.addEventListener("mouseup", listener);
         return () => { document.removeEventListener("mouseup", listener); };
-    }, [setDragMode, DragMode.NONE])
+    }, [setDragMode]);
 
     const clamp = (value: number, min: number, max: number) => {
         return Math.max(min, Math.min(max, value));

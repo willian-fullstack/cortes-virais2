@@ -56,7 +56,32 @@ export default function Editor(props: {
       props.setMediaList(items);
     }
     else {
-      props.dragAndDrop(props.mediaList[result.source.index]);
+      // Check if we're dragging an original media file or a segment
+      if (result.source.index < props.mediaList.length) {
+        // It's an original media file
+        props.dragAndDrop(props.mediaList[result.source.index]);
+      } else {
+        // It's a segment - find the segment in trackList
+        const segmentIndex = result.source.index - props.mediaList.length;
+        let currentIndex = 0;
+        let foundSegment = null;
+        
+        for (const track of props.trackList) {
+          for (const segment of track) {
+            if (currentIndex === segmentIndex) {
+              foundSegment = segment;
+              break;
+            }
+            currentIndex++;
+          }
+          if (foundSegment) break;
+        }
+        
+        if (foundSegment) {
+          // For segments, we use the media from the segment
+          props.dragAndDrop(foundSegment.media);
+        }
+      }
       const items = props.mediaList.slice();
       props.setMediaList(items);
     }
@@ -81,6 +106,7 @@ export default function Editor(props: {
           deleteVideo={props.deleteVideo}
           dragAndDrop={props.dragAndDrop}
           projectDuration={props.projectDuration}
+          trackList={props.trackList}
         />
         <MediaPlayer
           canvasRef={props.canvasRef}

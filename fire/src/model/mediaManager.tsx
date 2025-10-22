@@ -41,7 +41,7 @@ export default function MediaManager(props: {
         }
 
         props.setProjectDuration(duration);
-    }, [trackList, props]);
+    }, [trackList, props.setProjectDuration]);
 
     const thumbnailCanvas = document.createElement("canvas");
     const thumbnailCanvasContext = thumbnailCanvas.getContext("2d") as CanvasRenderingContext2D;
@@ -52,8 +52,19 @@ export default function MediaManager(props: {
             let img = document.createElement("img") as HTMLImageElement;
             
             await new Promise<void>((resolve, reject) => {
-                img.onload = () => resolve();
-                img.onerror = () => reject();
+                const timeout = setTimeout(() => {
+                    reject(new Error('Image loading timeout'));
+                }, 5000);
+
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    resolve();
+                };
+                img.onerror = (error) => {
+                    clearTimeout(timeout);
+                    console.error(`Image loading error for ${file.name}:`, error);
+                    reject(new Error(`Image loading error: ${file.name}`));
+                };
                 img.src = URL.createObjectURL(file);
             });
 
@@ -78,42 +89,90 @@ export default function MediaManager(props: {
         } else {
             // Handle videos
             let elm = document.createElement("video") as HTMLVideoElement;
-            elm.preload = "auto";
+            elm.preload = "metadata";
+            elm.muted = true; // Ensure video can play without user interaction
 
+            console.log(`Starting video processing for: ${file.name}`);
+
+            // First, wait for metadata to load
             await new Promise<void>((resolve, reject) => {
                 const timeout = setTimeout(() => {
-                    reject(new Error('Video loading timeout'));
-                }, 10000); // 10 second timeout
+                    console.error(`Video metadata loading timeout for: ${file.name}`);
+                    reject(new Error(`Video metadata loading timeout: ${file.name}`));
+                }, 15000); // 15 second timeout
 
-                elm.onloadeddata = () => {
+                elm.onloadedmetadata = () => {
+                    console.log(`Video metadata loaded: duration=${elm.duration}s, dimensions=${elm.videoWidth}x${elm.videoHeight} for file: ${file.name}`);
                     clearTimeout(timeout);
+                    
+                    // Check if video has valid dimensions
+                    if (elm.videoWidth === 0 || elm.videoHeight === 0) {
+                        reject(new Error(`Invalid video dimensions: ${elm.videoWidth}x${elm.videoHeight} for ${file.name}`));
+                        return;
+                    }
+                    
                     resolve();
                 };
                 
-                elm.onerror = () => {
+                elm.onerror = (error) => {
                     clearTimeout(timeout);
-                    reject(new Error('Video loading error'));
+                    console.error(`Video loading error for ${file.name}:`, error);
+                    reject(new Error(`Video loading error: ${file.name}`));
                 };
 
                 elm.src = URL.createObjectURL(file);
-                elm.currentTime = 0.0001;
+            });
+
+            // Then, seek to a specific time and wait for the seek to complete
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    console.error(`Video seek timeout for: ${file.name}`);
+                    reject(new Error(`Video seek timeout: ${file.name}`));
+                }, 5000);
+
+                elm.onseeked = () => {
+                    console.log(`Video seeked successfully for: ${file.name}`);
+                    clearTimeout(timeout);
+                    resolve();
+                };
+
+                elm.onerror = (error) => {
+                    clearTimeout(timeout);
+                    console.error(`Video seek error for ${file.name}:`, error);
+                    reject(new Error(`Video seek error: ${file.name}`));
+                };
+
+                // Seek to 1 second or 10% of duration, whichever is smaller
+                const seekTime = Math.min(1, elm.duration * 0.1);
+                console.log(`Seeking to time ${seekTime}s for: ${file.name}`);
+                elm.currentTime = seekTime;
             });
 
             // Generate Thumbnail for video
+            console.log(`Generating thumbnail for: ${file.name} (${elm.videoWidth}x${elm.videoHeight})`);
             thumbnailCanvas.width = elm.videoWidth;
             thumbnailCanvas.height = elm.videoHeight;
-            thumbnailCanvasContext.drawImage(
-                elm,
-                0,
-                0,
-                elm.videoWidth,
-                elm.videoHeight
-            );
+            
+            try {
+                thumbnailCanvasContext.drawImage(
+                    elm,
+                    0,
+                    0,
+                    elm.videoWidth,
+                    elm.videoHeight
+                );
+            } catch (error) {
+                console.error(`Canvas drawing error for ${file.name}:`, error);
+                throw new Error(`Canvas drawing error: ${file.name}`);
+            }
+
+            const thumbnailDataURL = thumbnailCanvas.toDataURL();
+            console.log(`Thumbnail generated successfully for: ${file.name}`);
 
             let media: Media = {
                 sources: [{ track: 0, element: elm, inUse: false }],
                 file: file,
-                thumbnail: thumbnailCanvas.toDataURL(),
+                thumbnail: thumbnailDataURL,
             };
 
             return media;
@@ -171,7 +230,18 @@ export default function MediaManager(props: {
             newElement = media.sources[0].element.cloneNode() as HTMLImageElement;
         } else {
             // For videos, use the actual duration
-            duration = (media.sources[0].element as HTMLVideoElement).duration * 1000;
+            const videoElement = media.sources[0].element as HTMLVideoElement;
+            duration = videoElement.duration * 1000;
+            
+            // Debug: log the duration calculation
+            console.log(`Video duration: ${videoElement.duration}s (${duration}ms) for file: ${media.file.name}`);
+            
+            // Check if duration is valid
+            if (isNaN(duration) || duration <= 0) {
+                console.warn(`Invalid duration for ${media.file.name}, using default 10s`);
+                duration = 10000; // Default 10 seconds if duration is invalid
+            }
+            
             newElement = media.sources[0].element.cloneNode() as HTMLVideoElement;
             (newElement as HTMLVideoElement).pause();
         }

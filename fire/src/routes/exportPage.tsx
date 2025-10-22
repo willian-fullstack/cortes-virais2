@@ -13,12 +13,13 @@ export default function ExportPage(props: any) {
 
   useEffect(() => {
     if (props.trackList.length > 1) {
-      setLoad(0);
       if (props.isRecordingRef.current) {
         setLoad(Math.round((100 * props.currentTime) / props.projectDuration));
+      } else {
+        setLoad(0);
       }
     }
-  }, [props.trackList, props.isRecordingRef, props.currentTime, props.projectDuration]);
+  }, [props.trackList, props.currentTime, props.projectDuration, props.isRecordingRef]);
 
   function AddProject() {
     if (props.trackList.length > 1) {

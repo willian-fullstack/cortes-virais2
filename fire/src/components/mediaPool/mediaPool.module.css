@@ -39,6 +39,11 @@
   margin-bottom: 20px;
 }
 
+.segmentCard {
+  border-left: 4px solid #4CAF50;
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
 .img {
   width: 100px;
 }

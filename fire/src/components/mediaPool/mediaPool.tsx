@@ -1,6 +1,6 @@
 import styles from "./mediaPool.module.css";
 import React, { useState } from 'react';
-import { Media } from "../../model/types";
+import { Media, Segment } from "../../model/types";
 import { Droppable, Draggable } from 'react-beautiful-dnd';
 
 const options = {
@@ -16,7 +16,15 @@ const options = {
     excludeAcceptAllOption: true
 };
 
-export default function MediaPool(props: any) {
+export default function MediaPool(props: {
+    mediaList: Media[];
+    setMediaList: (mediaList: Media[]) => void;
+    addVideo: (files: File[]) => void;
+    deleteVideo: (media: Media) => void;
+    dragAndDrop: (media: Media) => void;
+    projectDuration: number;
+    trackList: Segment[][];
+}) {
     const [status, setStatus] = useState<string>('');
     const [draggedOn, setDraggedOn] = useState<String>("");
 
@@ -34,6 +42,32 @@ export default function MediaPool(props: any) {
         </li>
     );
 
+    const renderSegmentItem = (segment: Segment, trackIndex: number, segmentIndex: number, globalIndex: number, provided?: any) => {
+        // Debug: log segment duration
+        console.log(`Segmento ${trackIndex + 1}-${segmentIndex + 1}: duration = ${segment.duration}ms (${(segment.duration / 1000).toFixed(2)}s)`);
+        
+        return (
+            <li className={`${styles.card} ${styles.segmentCard}`}
+                ref={provided?.innerRef} 
+                {...provided?.draggableProps} 
+                {...provided?.dragHandleProps}
+            >
+                <img className={styles.img} src={segment.media.thumbnail} alt={`Segmento ${trackIndex}-${segmentIndex}`} />
+                <p className={styles.cardCaption}>
+                    Segmento {trackIndex + 1}-{segmentIndex + 1}
+                    <br />
+                    <small>{(segment.duration / 1000).toFixed(2)}s</small>
+                </p>
+                <button className={styles.button} onClick={() => {
+                    // Aqui podemos implementar a lógica para deletar um segmento específico
+                    console.log(`Deletar segmento ${trackIndex}-${segmentIndex}`);
+                }}>
+                    <span className="material-icons">delete</span>
+                </button>
+            </li>
+        );
+    };
+
     const listItems = props.mediaList.map((item: Media, index: number) => {
         return (
             <Draggable key={item.file.name} draggableId={item.file.name} index={index}>
@@ -41,6 +75,28 @@ export default function MediaPool(props: any) {
             </Draggable>
         );
     });
+
+    // Criar lista de segmentos de todos os tracks
+    const segmentItems: React.JSX.Element[] = [];
+    let globalSegmentIndex = props.mediaList.length; // Começar após os arquivos originais
+
+    props.trackList.forEach((track, trackIndex) => {
+        track.forEach((segment, segmentIndex) => {
+            segmentItems.push(
+                <Draggable 
+                    key={`segment-${trackIndex}-${segmentIndex}`} 
+                    draggableId={`segment-${trackIndex}-${segmentIndex}`} 
+                    index={globalSegmentIndex}
+                >
+                    {(provided) => renderSegmentItem(segment, trackIndex, segmentIndex, globalSegmentIndex, provided)}
+                </Draggable>
+            );
+            globalSegmentIndex++;
+        });
+    });
+
+    // Combinar arquivos originais e segmentos
+    const allItems = [...listItems, ...segmentItems];
 
     const onClick = async () => {
         try {
@@ -98,14 +154,38 @@ export default function MediaPool(props: any) {
                     <Droppable 
                         droppableId="card" 
                         mode="virtual"
-                        renderClone={(provided, snapshot, rubric) => 
-                            renderMediaItem(props.mediaList[rubric.source.index], rubric.source.index, provided)
-                        }
+                        renderClone={(provided, snapshot, rubric) => {
+                            const sourceIndex = rubric.source.index;
+                            if (sourceIndex < props.mediaList.length) {
+                                // É um arquivo original
+                                return renderMediaItem(props.mediaList[sourceIndex], sourceIndex, provided);
+                            } else {
+                                // É um segmento - precisamos encontrar qual
+                                let segmentIndex = sourceIndex - props.mediaList.length;
+                                let currentIndex = 0;
+                                
+                                for (let trackIndex = 0; trackIndex < props.trackList.length; trackIndex++) {
+                                    for (let segIndex = 0; segIndex < props.trackList[trackIndex].length; segIndex++) {
+                                        if (currentIndex === segmentIndex) {
+                                            return renderSegmentItem(
+                                                props.trackList[trackIndex][segIndex], 
+                                                trackIndex, 
+                                                segIndex, 
+                                                sourceIndex, 
+                                                provided
+                                            );
+                                        }
+                                        currentIndex++;
+                                    }
+                                }
+                                return null;
+                            }
+                        }}
                     >
                         {
                             (provided) => (
                                 <ul className="card" {...provided.droppableProps} ref={provided.innerRef}>
-                                    {listItems}
+                                    {allItems}
                                 </ul>
                         )}
                     </Droppable>

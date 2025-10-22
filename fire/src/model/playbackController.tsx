@@ -46,7 +46,7 @@ export default function PlaybackController(props: {
   const isPlayingRef = useRef(false);
   const SKIP_THREASHOLD = 100;
   let recordedChunks: Array<any>;
-  const mediaRecorderRef = useRef<MediaRecorder>();
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   trackListRef.current = props.trackList;
   projectDurationRef.current = props.projectDuration;
@@ -93,9 +93,9 @@ export default function PlaybackController(props: {
           source.inUse = true;
           let mediaTime = curTime - segment.start + segment.mediaStart;
           if (
-            Math.abs(source.element.currentTime * 1000 - mediaTime) >
+            Math.abs((source.element as HTMLVideoElement).currentTime * 1000 - mediaTime) >
             SKIP_THREASHOLD ||
-            source.element.paused
+            (source.element as HTMLVideoElement).paused
           )
             needsSeek = true;
           segments.push(segment);
@@ -185,7 +185,7 @@ export default function PlaybackController(props: {
   useEffect(() => {
     if (currentTime > props.projectDuration)
       setCurrentTime(props.projectDuration);
-  }, [props.projectDuration, currentTime, setCurrentTime]);
+  }, [props.projectDuration, setCurrentTime]);
 
   const play = async () => {
     if (currentTime >= projectDurationRef.current) return;

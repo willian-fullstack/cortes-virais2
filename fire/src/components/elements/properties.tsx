@@ -68,7 +68,7 @@ export default function Properties({
     setPositionState(checkPropState("position"));
     setCropState(checkPropState("crop"));
     setScaleState(checkPropState("scale"));
-  }, [currentTime, segment]);
+  }, [currentTime, segment, checkKeyframeExists]);
 
   const _updateSegment = (args: any, property?: "position" | "scale" | "crop", isButtonPressed?: boolean) => {
     if (!segment || !selectedSegment) return false;
