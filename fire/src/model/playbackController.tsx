@@ -25,6 +25,7 @@ export default function PlaybackController(props: {
   selectedSegment: SegmentID | null;
   updateSegment: (id: SegmentID, segment: Segment) => void;
   splitVideo: (timestamp: number) => void;
+  splitAtMultiplePositions: (timestamps: number[]) => void;
   deleteSelectedSegment: () => void;
   projectWidth: number;
   projectHeight: number;

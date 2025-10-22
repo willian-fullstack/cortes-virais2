@@ -48,7 +48,32 @@ export default function Controls(
     }
 
     const createSplit = () => {
+        // Check if there are needles available
+        if ((window as any).timelineActions?.getNeedles) {
+            const needles = (window as any).timelineActions.getNeedles();
+            if (needles && needles.length > 0) {
+                // Cut at all needle positions
+                if ((window as any).timelineActions?.cutAtNeedles) {
+                    (window as any).timelineActions.cutAtNeedles();
+                }
+                return;
+            }
+        }
+        
+        // Fallback to single split at current time
         splitVideo(currentTime);
+    };
+
+    const duplicateNeedle = () => {
+        if ((window as any).timelineActions?.duplicateNeedle) {
+            (window as any).timelineActions.duplicateNeedle();
+        }
+    };
+
+    const clearAllNeedles = () => {
+        if ((window as any).timelineActions?.clearAllNeedles) {
+            (window as any).timelineActions.clearAllNeedles();
+        }
     };
 
     return (
@@ -82,14 +107,17 @@ export default function Controls(
             <button className={styles.button} onClick={increaseScale} title="Zoom In">
                 <span className="material-icons">add</span>
             </button>
-            <button className={styles.button} onClick={createSplit} title="Split">
+            <button className={styles.button} onClick={createSplit} title="Cortar (nas agulhas se disponíveis)">
                 <span className="material-icons">content_cut</span>
             </button>
             <button className={styles.button} onClick={deleteSelectedSegment} title="Delete">
                 <span className="material-icons">delete</span>
             </button>
-            <button className={styles.button} title="Duplicate">
-                <span className="material-icons">content_copy</span>
+            <button className={styles.button} onClick={duplicateNeedle} title="Duplicar Agulha">
+                <span className="material-icons">add_location</span>
+            </button>
+            <button className={styles.button} onClick={clearAllNeedles} title="Limpar Agulhas">
+                <span className="material-icons">clear_all</span>
             </button>
         </div>
     );

@@ -314,6 +314,91 @@ export default function MediaManager(props: {
         ]);
     }
 
+    const splitAtMultiplePositions = (timestamps: number[]) => {
+        if (timestamps.length === 0) return;
+
+        // Sort timestamps in descending order to avoid index shifting issues
+        const sortedTimestamps = [...timestamps].sort((a, b) => b - a);
+        
+        let newTrackList = [...trackList];
+
+        // Process each timestamp
+        for (const timestamp of sortedTimestamps) {
+            // Find all segments that intersect with this timestamp
+            for (let trackIndex = 0; trackIndex < newTrackList.length; trackIndex++) {
+                const track = newTrackList[trackIndex];
+                
+                for (let segmentIndex = 0; segmentIndex < track.length; segmentIndex++) {
+                    const segment = track[segmentIndex];
+                    
+                    // Check if timestamp is within this segment
+                    if (segment.start < timestamp && segment.start + segment.duration > timestamp) {
+                        // Split this segment
+                        let segmentTimeCut = timestamp - segment.start;
+                        let lenKeyframes = segment.keyframes.length;
+                        let keyFrameIndex = 0;
+                        
+                        for (let i = 1; i < lenKeyframes; i++) {
+                            let checkKeyframe = segment.keyframes[i];
+                            if (checkKeyframe.start > segmentTimeCut) {
+                                break;
+                            }
+                            keyFrameIndex = i;
+                        }
+
+                        let interpKeyFrame = calculateProperties(segment, timestamp);
+
+                        // Remove remaining keyframes from split segment
+                        let leftSegmentKeyFrames = segment.keyframes.slice(0, keyFrameIndex + 1);
+                        // Move remaining keyframes to new split segment
+                        let rightSegmentKeyFrames = segment.keyframes.slice(keyFrameIndex + 1, lenKeyframes);
+
+                        // Edit new keyframes to new offset
+                        for (let i = 0; i < rightSegmentKeyFrames.length; i++) {
+                            rightSegmentKeyFrames[i].start -= segmentTimeCut;
+                        }
+
+                        // Add interpolated keyframe at the end of the selected split segment
+                        let newInterpKeyFrame = {
+                            ...interpKeyFrame,
+                            start: segmentTimeCut - 1 / props.projectFramerate
+                        };
+                        leftSegmentKeyFrames.push(newInterpKeyFrame);
+
+                        // Create the two new segments
+                        const leftSegment = {
+                            ...segment,
+                            duration: timestamp - segment.start,
+                            keyframes: leftSegmentKeyFrames
+                        };
+
+                        const rightSegment = {
+                            media: segment.media,
+                            start: timestamp,
+                            duration: segment.start + segment.duration - timestamp,
+                            mediaStart: timestamp - segment.start + segment.mediaStart,
+                            texture: segment.texture,
+                            keyframes: [interpKeyFrame].concat(rightSegmentKeyFrames)
+                        };
+
+                        // Replace the original segment with the two new ones
+                        newTrackList[trackIndex] = [
+                            ...track.slice(0, segmentIndex),
+                            leftSegment,
+                            rightSegment,
+                            ...track.slice(segmentIndex + 1)
+                        ];
+
+                        // Break out of the segment loop since we modified the track
+                        break;
+                    }
+                }
+            }
+        }
+
+        setTrackList(newTrackList);
+    }
+
     const updateSegment = (id: SegmentID, newSegment: Segment) => {
         setTrackList([
             ...trackList.slice(0, id.track),
@@ -339,6 +424,7 @@ export default function MediaManager(props: {
             setSelectedSegment={setSelectedSegment}
             updateSegment={updateSegment}
             splitVideo={split}
+            splitAtMultiplePositions={splitAtMultiplePositions}
         />
     );
 }

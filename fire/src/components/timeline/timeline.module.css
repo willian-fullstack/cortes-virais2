@@ -133,3 +133,26 @@
 .move {
   cursor: move !important;
 }
+
+.additionalNeedle {
+    z-index: 10;
+    cursor: pointer;
+}
+
+.additionalNeedle .highlight {
+    background-color: #ff6b35;
+    opacity: 0.8;
+}
+
+.needleIndicator {
+    background-color: #ff6b35 !important;
+    box-shadow: 0 0 4px rgba(255, 107, 53, 0.6);
+}
+
+.additionalNeedle:hover .highlight {
+    opacity: 1;
+}
+
+.additionalNeedle:hover .needleIndicator {
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.8);
+}

@@ -33,6 +33,7 @@ export default function Editor(props: {
   setSelectedSegment: (selected: SegmentID | null) => void,
   updateSegment: (id: SegmentID, segment: Segment) => void,
   splitVideo: (timestamp: number) => void,
+  splitAtMultiplePositions: (timestamps: number[]) => void,
   deleteSelectedSegment: () => void,
   projectId: string,
   setProjectId: (id: string) => void,
@@ -40,6 +41,7 @@ export default function Editor(props: {
   setProjectUser: (user:string) => void,
 }) {
   const [scaleFactor, setScaleFactor] = useState<number>(0.1);
+  const [needles, setNeedles] = useState<number[]>([]);
 
   const handleOnDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -59,6 +61,15 @@ export default function Editor(props: {
       props.setMediaList(items);
     }
   }
+
+  const cutAtNeedles = () => {
+    // Use the new splitAtMultiplePositions function instead of multiple splitVideo calls
+    if (needles.length > 0) {
+      props.splitAtMultiplePositions(needles);
+      // Clear needles after cutting
+      setNeedles([]);
+    }
+  };
 
   return (
     <DragDropContext onDragEnd={handleOnDragEnd}>
@@ -105,6 +116,9 @@ export default function Editor(props: {
           updateSegment={props.updateSegment}
           scaleFactor={scaleFactor}
           setTrackList={props.setTrackList}
+          needles={needles}
+          setNeedles={setNeedles}
+          onCutAtNeedles={cutAtNeedles}
         />
         <Actions
           projectId={props.projectId}

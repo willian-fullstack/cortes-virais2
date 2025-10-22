@@ -14,6 +14,9 @@ export default function Timeline({
     updateSegment,
     scaleFactor,
     setTrackList,
+    needles = [],
+    setNeedles,
+    onCutAtNeedles,
 }: {
     trackList: Segment[][],
     projectDuration: number,
@@ -23,7 +26,10 @@ export default function Timeline({
     setCurrentTime: (timestamp: number) => void,
     updateSegment: (id: SegmentID, segment: Segment) => void,
     scaleFactor: number,
-    setTrackList: (tracks: Segment[][]) => void
+    setTrackList: (tracks: Segment[][]) => void,
+    needles?: number[],
+    setNeedles?: (needles: number[]) => void,
+    onCutAtNeedles?: () => void,
 }) {
     enum DragMode {
         NONE,
@@ -185,6 +191,25 @@ export default function Timeline({
         return segmentDivs;
     }, [selectedSegment, scaleFactor, setSelectedSegment, setCurrentTime, trackList]);
 
+    const duplicateNeedle = () => {
+        if (setNeedles) {
+            const newNeedles = [...needles, currentTime];
+            setNeedles(newNeedles.sort((a, b) => a - b));
+        }
+    };
+
+    const removeNeedle = (needleTime: number) => {
+        if (setNeedles) {
+            setNeedles(needles.filter(time => time !== needleTime));
+        }
+    };
+
+    const clearAllNeedles = () => {
+        if (setNeedles) {
+            setNeedles([]);
+        }
+    };
+
     const setDragMode = (mode: DragMode) => {
         dragMode.current = mode;
 
@@ -202,6 +227,19 @@ export default function Timeline({
     useEffect(() => {
         setTrackDivs(trackList.map((track, ind) => <div key={`track-${ind}`} className={styles.track}>{genTrack(track, ind)}</div>));
     }, [trackList, selectedSegment, scaleFactor, genTrack]);
+
+    // Expose functions to parent component
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            (window as any).timelineActions = {
+                duplicateNeedle,
+                removeNeedle,
+                clearAllNeedles,
+                cutAtNeedles: onCutAtNeedles,
+                getNeedles: () => needles
+            };
+        }
+    }, [currentTime, needles, onCutAtNeedles]);
 
     useEffect(() => {
         let listener = (event: globalThis.MouseEvent) => {
@@ -380,6 +418,29 @@ export default function Timeline({
                             <div className={styles.highlight}></div>
                             <div className={styles.indicator}></div>
                         </div>
+                        
+                        {/* Render additional needles */}
+                        {needles.map((needleTime, index) => (
+                            <div 
+                                key={`needle-${index}`}
+                                style={{
+                                    transform: `translateX(${needleTime * scaleFactor}px)`
+                                }} 
+                                className={`${styles.pointer} ${styles.additionalNeedle}`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentTime(needleTime);
+                                }}
+                                onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    removeNeedle(needleTime);
+                                }}
+                                title={`Agulha ${index + 1} - Duplo clique para remover`}
+                            >
+                                <div className={styles.highlight}></div>
+                                <div className={`${styles.indicator} ${styles.needleIndicator}`}></div>
+                            </div>
+                        ))}
                         {trackDivs}
                     </div>
                 </div>
