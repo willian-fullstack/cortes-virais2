@@ -42,9 +42,67 @@ export default function MediaPool(props: {
         </li>
     );
 
+    // Função para calcular o número do vídeo resultante baseado nos intervalos de tempo
+    const calculateVideoNumber = (trackIndex: number, segmentIndex: number) => {
+        // Encontrar todos os pontos de corte únicos na timeline
+        const cutPoints = new Set<number>();
+        
+        // Coletar todos os pontos de início e fim dos segmentos
+        props.trackList.forEach(track => {
+            track.forEach(segment => {
+                cutPoints.add(segment.start);
+                cutPoints.add(segment.start + segment.duration);
+            });
+        });
+        
+        // Converter para array ordenado e criar intervalos
+        const sortedCutPoints = Array.from(cutPoints).sort((a, b) => a - b);
+        
+        // Encontrar o segmento atual
+        const currentSegment = props.trackList[trackIndex][segmentIndex];
+        
+        // Encontrar em qual intervalo de tempo este segmento está
+        for (let i = 0; i < sortedCutPoints.length - 1; i++) {
+            const intervalStart = sortedCutPoints[i];
+            const intervalEnd = sortedCutPoints[i + 1];
+            
+            // Verificar se o segmento atual está neste intervalo
+            if (currentSegment.start >= intervalStart && currentSegment.start < intervalEnd) {
+                return i + 1; // Retorna o número do vídeo (1-indexed)
+            }
+        }
+        
+        return 1; // Fallback
+    };
+
+    // Função para verificar se um segmento já foi renderizado neste intervalo
+    const isFirstSegmentInInterval = (trackIndex: number, segmentIndex: number) => {
+        const currentSegment = props.trackList[trackIndex][segmentIndex];
+        const videoNumber = calculateVideoNumber(trackIndex, segmentIndex);
+        
+        // Verificar se existe algum segmento anterior no mesmo intervalo de tempo
+        for (let t = 0; t < props.trackList.length; t++) {
+            for (let s = 0; s < props.trackList[t].length; s++) {
+                // Se chegamos no segmento atual, pare
+                if (t === trackIndex && s === segmentIndex) {
+                    return true; // É o primeiro neste intervalo
+                }
+                
+                // Se encontrou outro segmento no mesmo intervalo, não é o primeiro
+                if (calculateVideoNumber(t, s) === videoNumber) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    };
+
     const renderSegmentItem = (segment: Segment, trackIndex: number, segmentIndex: number, globalIndex: number, provided?: any) => {
+        const videoNumber = calculateVideoNumber(trackIndex, segmentIndex);
+        
         // Debug: log segment duration
-        console.log(`Segmento ${trackIndex + 1}-${segmentIndex + 1}: duration = ${segment.duration}ms (${(segment.duration / 1000).toFixed(2)}s)`);
+        console.log(`Vídeo ${videoNumber}: duration = ${segment.duration}ms (${(segment.duration / 1000).toFixed(2)}s)`);
         
         return (
             <li className={`${styles.card} ${styles.segmentCard}`}
@@ -52,15 +110,15 @@ export default function MediaPool(props: {
                 {...provided?.draggableProps} 
                 {...provided?.dragHandleProps}
             >
-                <img className={styles.img} src={segment.media.thumbnail} alt={`Segmento ${trackIndex}-${segmentIndex}`} />
+                <img className={styles.img} src={segment.media.thumbnail} alt={`Vídeo ${videoNumber}`} />
                 <p className={styles.cardCaption}>
-                    Segmento {trackIndex + 1}-{segmentIndex + 1}
+                    Vídeo {videoNumber}
                     <br />
                     <small>{(segment.duration / 1000).toFixed(2)}s</small>
                 </p>
                 <button className={styles.button} onClick={() => {
                     // Aqui podemos implementar a lógica para deletar um segmento específico
-                    console.log(`Deletar segmento ${trackIndex}-${segmentIndex}`);
+                    console.log(`Deletar vídeo ${videoNumber}`);
                 }}>
                     <span className="material-icons">delete</span>
                 </button>
@@ -68,30 +126,35 @@ export default function MediaPool(props: {
         );
     };
 
-    const listItems = props.mediaList.map((item: Media, index: number) => {
-        return (
-            <Draggable key={item.file.name} draggableId={item.file.name} index={index}>
-                {(provided) => renderMediaItem(item, index, provided)}
-            </Draggable>
-        );
-    });
+    const listItems = props.mediaList
+        .filter((item: Media) => item && item.file) // Filtrar elementos undefined ou sem file
+        .map((item: Media, index: number) => {
+            return (
+                <Draggable key={item.file.name} draggableId={item.file.name} index={index}>
+                    {(provided) => renderMediaItem(item, index, provided)}
+                </Draggable>
+            );
+        });
 
     // Criar lista de segmentos de todos os tracks
     const segmentItems: React.JSX.Element[] = [];
-    let globalSegmentIndex = props.mediaList.length; // Começar após os arquivos originais
+    let globalSegmentIndex = listItems.length; // Começar após os arquivos originais filtrados
 
     props.trackList.forEach((track, trackIndex) => {
         track.forEach((segment, segmentIndex) => {
-            segmentItems.push(
-                <Draggable 
-                    key={`segment-${trackIndex}-${segmentIndex}`} 
-                    draggableId={`segment-${trackIndex}-${segmentIndex}`} 
-                    index={globalSegmentIndex}
-                >
-                    {(provided) => renderSegmentItem(segment, trackIndex, segmentIndex, globalSegmentIndex, provided)}
-                </Draggable>
-            );
-            globalSegmentIndex++;
+            // Só adicionar se for o primeiro segmento neste intervalo de tempo
+            if (isFirstSegmentInInterval(trackIndex, segmentIndex)) {
+                segmentItems.push(
+                    <Draggable 
+                        key={`segment-${trackIndex}-${segmentIndex}`} 
+                        draggableId={`segment-${trackIndex}-${segmentIndex}`} 
+                        index={globalSegmentIndex}
+                    >
+                        {(provided) => renderSegmentItem(segment, trackIndex, segmentIndex, globalSegmentIndex, provided)}
+                    </Draggable>
+                );
+                globalSegmentIndex++;
+            }
         });
     });
 
@@ -156,26 +219,30 @@ export default function MediaPool(props: {
                         mode="virtual"
                         renderClone={(provided, snapshot, rubric) => {
                             const sourceIndex = rubric.source.index;
-                            if (sourceIndex < props.mediaList.length) {
+                            const filteredMediaList = props.mediaList.filter((item: Media) => item && item.file);
+                            
+                            if (sourceIndex < filteredMediaList.length) {
                                 // É um arquivo original
-                                return renderMediaItem(props.mediaList[sourceIndex], sourceIndex, provided);
+                                return renderMediaItem(filteredMediaList[sourceIndex], sourceIndex, provided);
                             } else {
                                 // É um segmento - precisamos encontrar qual
-                                let segmentIndex = sourceIndex - props.mediaList.length;
+                                let segmentIndex = sourceIndex - filteredMediaList.length;
                                 let currentIndex = 0;
                                 
                                 for (let trackIndex = 0; trackIndex < props.trackList.length; trackIndex++) {
                                     for (let segIndex = 0; segIndex < props.trackList[trackIndex].length; segIndex++) {
-                                        if (currentIndex === segmentIndex) {
-                                            return renderSegmentItem(
-                                                props.trackList[trackIndex][segIndex], 
-                                                trackIndex, 
-                                                segIndex, 
-                                                sourceIndex, 
-                                                provided
-                                            );
+                                        if (isFirstSegmentInInterval(trackIndex, segIndex)) {
+                                            if (currentIndex === segmentIndex) {
+                                                return renderSegmentItem(
+                                                    props.trackList[trackIndex][segIndex], 
+                                                    trackIndex, 
+                                                    segIndex, 
+                                                    sourceIndex, 
+                                                    provided
+                                                );
+                                            }
+                                            currentIndex++;
                                         }
-                                        currentIndex++;
                                     }
                                 }
                                 return null;

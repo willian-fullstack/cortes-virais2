@@ -71,8 +71,10 @@ export default function PlaybackController(props: {
     _setCurrentTime(curTime);
 
     for (const media of mediaListRef.current) {
-      for (const source of media.sources) {
-        source.inUse = false;
+      if (media && media.sources) {
+        for (const source of media.sources) {
+          source.inUse = false;
+        }
       }
     }
 
@@ -87,31 +89,37 @@ export default function PlaybackController(props: {
           curTime >= segment.start &&
           curTime < segment.start + segment.duration
         ) {
-          let source = segment.media.sources.find(
-            (source) => source.track === i
-          ) as Source;
-          source.inUse = true;
-          let mediaTime = curTime - segment.start + segment.mediaStart;
-          if (
-            Math.abs((source.element as HTMLVideoElement).currentTime * 1000 - mediaTime) >
-            SKIP_THREASHOLD ||
-            (source.element as HTMLVideoElement).paused
-          )
-            needsSeek = true;
-          segments.push(segment);
-          elements.push(source.element);
+          if (segment.media && segment.media.sources) {
+            let source = segment.media.sources.find(
+              (source) => source.track === i
+            ) as Source;
+            if (source) {
+              source.inUse = true;
+              let mediaTime = curTime - segment.start + segment.mediaStart;
+              if (
+                Math.abs((source.element as HTMLVideoElement).currentTime * 1000 - mediaTime) >
+                SKIP_THREASHOLD ||
+                (source.element as HTMLVideoElement).paused
+              )
+                needsSeek = true;
+              segments.push(segment);
+              elements.push(source.element);
+            }
+          }
         }
       }
     }
 
     for (const media of mediaListRef.current) {
-      for (const source of media.sources) {
-        if (!source.inUse) {
-          // Only call pause() on video elements, not images
-          if (source.element instanceof HTMLVideoElement) {
-            source.element.pause();
+      if (media && media.sources) {
+        for (const source of media.sources) {
+          if (!source.inUse) {
+            // Only call pause() on video elements, not images
+            if (source.element instanceof HTMLVideoElement) {
+              source.element.pause();
+            }
+            source.inUse = true;
           }
-          source.inUse = true;
         }
       }
     }
