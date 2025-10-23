@@ -376,15 +376,21 @@ export default function PlaybackController(props: {
       a.style.display = 'none';
       
       document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
       
+      // Aguardar um pouco antes de clicar para garantir que o link esteja pronto
       setTimeout(() => {
-        URL.revokeObjectURL(url);
-        console.log(`Blob URL revoked: ${url}`);
-      }, 1000);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Aumentar o tempo antes de revogar o URL para evitar ERR_ABORTED
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          console.log(`Blob URL revoked: ${url}`);
+        }, 5000); // Aumentado de 1000ms para 5000ms
+        
+        console.log(`Download initiated for: ${filename}`);
+      }, 100);
       
-      console.log(`Download initiated for: ${filename}`);
     } catch (error) {
       console.error('Error during download:', error);
     }
@@ -414,9 +420,50 @@ export default function PlaybackController(props: {
     recordedChunks = [];
 
     try {
+      // Forçar a posição da agulha para o início do segmento
       setCurrentTime(segmentStartTime);
-      await renderFrame(false);
       
+      // Aguardar que o setCurrentTime tenha efeito
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Aguardar que todos os vídeos sejam sincronizados na posição correta
+      let syncAttempts = 0;
+      const maxSyncAttempts = 10;
+      
+      while (syncAttempts < maxSyncAttempts) {
+        await renderFrame(false);
+        
+        // Verificar se todos os vídeos estão na posição correta
+        let allVideosSynced = true;
+        for (const media of mediaListRef.current) {
+          if (media && media.sources) {
+            for (const source of media.sources) {
+              if (source.element instanceof HTMLVideoElement) {
+                const expectedTime = (segmentStartTime) / 1000;
+                const currentVideoTime = source.element.currentTime;
+                const timeDiff = Math.abs(currentVideoTime - expectedTime);
+                
+                if (timeDiff > 0.1) { // Tolerância de 100ms
+                  allVideosSynced = false;
+                  console.log(`Video not synced yet. Expected: ${expectedTime}s, Current: ${currentVideoTime}s, Diff: ${timeDiff}s`);
+                  break;
+                }
+              }
+            }
+            if (!allVideosSynced) break;
+          }
+        }
+        
+        if (allVideosSynced) {
+          console.log(`All videos synced after ${syncAttempts + 1} attempts`);
+          break;
+        }
+        
+        syncAttempts++;
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Aguardar mais um pouco para garantir estabilidade
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const gl = props.canvasRef.getContext('webgl');
@@ -552,7 +599,15 @@ export default function PlaybackController(props: {
       mediaRecorder.start(100);
       console.log(`Segment MediaRecorder started with state: ${mediaRecorder.state}`);
       
-      await play();
+      // Iniciar a gravação sem chamar play() para evitar que a agulha volte
+      setIsPlaying(true);
+      isPlayingRef.current = true;
+      // Manter a posição atual sem recalcular
+      playbackStartTimeRef.current = performance.now();
+      lastPlaybackTimeRef.current = segmentStartTime;
+      
+      // Iniciar o loop de renderização para a gravação
+      renderFrame(true);
       
       setTimeout(() => {
         console.log(`Stopping segment recording after ${segmentDuration}ms`);
