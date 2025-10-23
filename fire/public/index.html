@@ -35,8 +35,18 @@
         var global = globalThis;
       }
       if (typeof process === 'undefined') {
-        var process = { env: {} };
+        var process = { 
+          env: {
+            NODE_ENV: 'development'
+          },
+          browser: true,
+          version: '',
+          versions: {},
+          platform: 'browser'
+        };
       }
+      // Make process available globally
+      window.process = process;
     </script>
   </head>
   <body>

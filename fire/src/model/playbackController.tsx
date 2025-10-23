@@ -397,6 +397,19 @@ export default function PlaybackController(props: {
     }
 
     console.log(`Starting segment export: ${segmentStartTime}ms for ${segmentDuration}ms`);
+    
+    // Limpar qualquer MediaRecorder anterior
+    if (mediaRecorderRef.current) {
+      try {
+        if (mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+        }
+        mediaRecorderRef.current = null;
+      } catch (error) {
+        console.warn('Error cleaning up previous MediaRecorder:', error);
+      }
+    }
+    
     isRecordingRef.current = true;
     recordedChunks = [];
 
@@ -520,12 +533,20 @@ export default function PlaybackController(props: {
         
         download(blob, `segment_${videoNumber}.webm`);
         isRecordingRef.current = false;
+        // Limpar a referência após o download
+        if (mediaRecorderRef.current === mediaRecorder) {
+          mediaRecorderRef.current = null;
+        }
         console.log(`Segment ${videoNumber} exported successfully!`);
       };
 
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error for segment:', event);
         isRecordingRef.current = false;
+        // Limpar a referência em caso de erro
+        if (mediaRecorderRef.current === mediaRecorder) {
+          mediaRecorderRef.current = null;
+        }
       };
 
       mediaRecorder.start(100);
@@ -535,8 +556,16 @@ export default function PlaybackController(props: {
       
       setTimeout(() => {
         console.log(`Stopping segment recording after ${segmentDuration}ms`);
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          try {
+            mediaRecorderRef.current.stop();
+          } catch (error) {
+            console.error('Error stopping MediaRecorder:', error);
+            isRecordingRef.current = false;
+          }
+        } else {
+          console.warn('MediaRecorder is not in recording state when trying to stop');
+          isRecordingRef.current = false;
         }
         pause();
       }, segmentDuration);
