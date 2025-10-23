@@ -28,6 +28,33 @@
   height: 50px;
 }
 
+.buttonGroup {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.addText {
+  width: 50px;
+  height: 50px;
+  background: var(--button-background-color, #4CAF50);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.addText:hover {
+  background: var(--button-hover-background-color, #45a049);
+}
+
+.addText span {
+  color: white;
+}
+
 .card {
   background-color: var(--media-pool-card-background-color);
   border-radius: var(--border-radius);

@@ -4,7 +4,7 @@ import Controls from "../components/controls/controls";
 import MediaPlayer from "../components/mediaPlayer/mediaPlayer";
 import Actions from "../components/actions/actions";
 import Timeline from "../components/timeline/timeline";
-import { Media, Segment, SegmentID } from "../model/types";
+import { Media, Segment, SegmentID, TextStyle } from "../model/types";
 import { WebGLRenderer } from "../model/webgl";
 import Properties from "../components/elements/properties";
 import React, { useState } from "react";
@@ -17,6 +17,7 @@ export default function Editor(props: {
   trackList: Segment[][],
   setTrackList: (segments: Segment[][]) => void,
   addVideo: (file: File[]) => void,
+  addText: (textContent: string, textStyle: TextStyle) => void,
   deleteVideo: (media: Media) => void,
   playVideo: () => void,
   pauseVideo: () => void,
@@ -103,10 +104,12 @@ export default function Editor(props: {
           mediaList={props.mediaList}
           setMediaList={props.setMediaList}
           addVideo={props.addVideo}
+          addText={props.addText}
           deleteVideo={props.deleteVideo}
           dragAndDrop={props.dragAndDrop}
           projectDuration={props.projectDuration}
           trackList={props.trackList}
+          setCurrentTime={props.setCurrentTime}
         />
         <MediaPlayer
           canvasRef={props.canvasRef}

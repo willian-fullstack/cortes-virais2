@@ -1,12 +1,25 @@
 export interface Source {
     track: number;
-    element: HTMLVideoElement | HTMLImageElement;
+    element: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement;
     inUse: boolean;
 }
+
+export interface TextStyle {
+    fontSize: number;
+    fontFamily: string;
+    color: string;
+    borderColor: string;
+    borderWidth: number;
+    backgroundColor: string;
+}
+
 export interface Media {
     sources: Source[]; // Source 0 should allways be present
     file: File;
     thumbnail: string;
+    type?: 'video' | 'image' | 'text';
+    textContent?: string;
+    textStyle?: TextStyle;
 }
 
 export interface Segment {

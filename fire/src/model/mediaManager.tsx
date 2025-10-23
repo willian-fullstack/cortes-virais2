@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { calculateProperties } from "../utils/utils";
 import PlaybackController from "./playbackController";
-import { Media, Project, Segment, SegmentID } from "./types";
+import { Media, Project, Segment, SegmentID, TextStyle } from "./types";
 import { WebGLRenderer } from "./webgl";
 
 export default function MediaManager(props: {
@@ -217,14 +217,75 @@ export default function MediaManager(props: {
         return;
     }
 
+    const addText = async (textContent: string, textStyle: TextStyle) => {
+        // Create a canvas element to render the text
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) return;
+        
+        // Set canvas size
+        canvas.width = 400;
+        canvas.height = 200;
+        
+        // Apply text style
+        ctx.font = `${textStyle.fontSize}px ${textStyle.fontFamily}`;
+        ctx.fillStyle = textStyle.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Fill background if specified
+        if (textStyle.backgroundColor !== 'transparent') {
+            ctx.fillStyle = textStyle.backgroundColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = textStyle.color;
+        }
+        
+        // Draw text
+        ctx.fillText(textContent, canvas.width / 2, canvas.height / 2);
+        
+        // Add border if specified
+        if (textStyle.borderWidth > 0) {
+            ctx.strokeStyle = textStyle.borderColor;
+            ctx.lineWidth = textStyle.borderWidth;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Create thumbnail
+        const thumbnail = canvas.toDataURL();
+        
+        // Create a fake file for the text element
+        const textFile = new File([textContent], `text_${Date.now()}.txt`, { type: 'text/plain' });
+        
+        const textMedia: Media = {
+            file: textFile,
+            thumbnail: thumbnail,
+            type: 'text',
+            textContent: textContent,
+            textStyle: textStyle,
+            sources: [{
+                track: 0,
+                element: canvas,
+                inUse: false
+            }]
+        };
+        
+        setMediaList([...mediaList, textMedia]);
+        console.log("Successfully added text element!");
+    }
+
     const dragAndDrop = (media: Media) => {
         if (renderer == null) return;
         
         // Handle different media types
         let duration = 0;
-        let newElement: HTMLVideoElement | HTMLImageElement;
+        let newElement: HTMLVideoElement | HTMLImageElement | HTMLCanvasElement;
         
-        if (media.file.type.startsWith('image/')) {
+        if (media.type === 'text') {
+            // For text elements, set a default duration (e.g., 5 seconds)
+            duration = 5000; // 5 seconds in milliseconds
+            newElement = media.sources[0].element.cloneNode() as HTMLCanvasElement;
+        } else if (media.file.type.startsWith('image/')) {
             // For images, set a default duration (e.g., 5 seconds)
             duration = 5000; // 5 seconds in milliseconds
             newElement = media.sources[0].element.cloneNode() as HTMLImageElement;
@@ -486,6 +547,7 @@ export default function MediaManager(props: {
             trackList={trackList}
             setTrackList={setTrackList}
             addVideo={addVideo}
+            addText={addText}
             deleteVideo={deleteVideo}
             deleteSelectedSegment={deleteSelectedSegment}
             renderer={renderer}

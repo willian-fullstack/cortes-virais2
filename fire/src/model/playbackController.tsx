@@ -1,5 +1,5 @@
 import Editor from "../routes/editor";
-import { Media, Project, Segment, SegmentID, Source } from "./types";
+import { Media, Project, Segment, SegmentID, Source, TextStyle } from "./types";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { WebGLRenderer } from "./webgl";
 import { Route, BrowserRouter as Router, Switch, Redirect } from "react-router-dom";
@@ -18,6 +18,7 @@ export default function PlaybackController(props: {
   trackList: Segment[][];
   setTrackList: (segments: Segment[][]) => void;
   addVideo: (file: File[]) => void;
+  addText: (textContent: string, textStyle: TextStyle) => void;
   deleteVideo: (media: Media) => void;
   renderer: WebGLRenderer;
   dragAndDrop: (media: Media) => void;

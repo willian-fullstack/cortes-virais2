@@ -20,10 +20,12 @@ export default function MediaPool(props: {
     mediaList: Media[];
     setMediaList: (mediaList: Media[]) => void;
     addVideo: (files: File[]) => void;
+    addText: (textContent: string, textStyle: any) => void;
     deleteVideo: (media: Media) => void;
     dragAndDrop: (media: Media) => void;
     projectDuration: number;
     trackList: Segment[][];
+    setCurrentTime: (timestamp: number) => void;
 }) {
     const [status, setStatus] = useState<string>('');
     const [draggedOn, setDraggedOn] = useState<String>("");
@@ -109,6 +111,10 @@ export default function MediaPool(props: {
                 ref={provided?.innerRef} 
                 {...provided?.draggableProps} 
                 {...provided?.dragHandleProps}
+                onClick={() => {
+                    // Navegar para o início do segmento na timeline
+                    props.setCurrentTime(segment.start);
+                }}
             >
                 <img className={styles.img} src={segment.media.thumbnail} alt={`Vídeo ${videoNumber}`} />
                 <p className={styles.cardCaption}>
@@ -116,7 +122,8 @@ export default function MediaPool(props: {
                     <br />
                     <small>{(segment.duration / 1000).toFixed(2)}s</small>
                 </p>
-                <button className={styles.button} onClick={() => {
+                <button className={styles.button} onClick={(e) => {
+                    e.stopPropagation(); // Evitar que o clique no botão acione o onClick do li
                     // Aqui podemos implementar a lógica para deletar um segmento específico
                     console.log(`Deletar vídeo ${videoNumber}`);
                 }}>
@@ -205,13 +212,32 @@ export default function MediaPool(props: {
         >
             <div className={styles.hbox}>
                 <h2 className={styles.title}>Project Files</h2>
-                <button
-                    className={styles.addFiles}
-                    onClick={onClick}
-                    title="Add files"
-                    >
-                    <span className="material-icons md-36">add</span>
-                </button>
+                <div className={styles.buttonGroup}>
+                    <button
+                        className={styles.addFiles}
+                        onClick={onClick}
+                        title="Add files"
+                        >
+                        <span className="material-icons md-36">add</span>
+                    </button>
+                    <button
+                        className={styles.addText}
+                        onClick={() => {
+                            const textStyle = {
+                                fontSize: 24,
+                                fontFamily: 'Arial',
+                                color: '#ffffff',
+                                borderColor: '#000000',
+                                borderWidth: 0,
+                                backgroundColor: 'transparent'
+                            };
+                            props.addText('Novo Texto', textStyle);
+                        }}
+                        title="Add text"
+                        >
+                        <span className="material-icons md-36">text_fields</span>
+                    </button>
+                </div>
             </div>
             <div className={styles.mediaList}>
                     <Droppable 
