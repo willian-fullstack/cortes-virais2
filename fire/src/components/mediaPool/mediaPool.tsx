@@ -26,6 +26,7 @@ export default function MediaPool(props: {
     projectDuration: number;
     trackList: Segment[][];
     setCurrentTime: (timestamp: number) => void;
+    exportSegment?: (segment: Segment, videoNumber: number) => void;
 }) {
     const [status, setStatus] = useState<string>('');
     const [draggedOn, setDraggedOn] = useState<String>("");
@@ -122,13 +123,24 @@ export default function MediaPool(props: {
                     <br />
                     <small>{(segment.duration / 1000).toFixed(2)}s</small>
                 </p>
-                <button className={styles.button} onClick={(e) => {
-                    e.stopPropagation(); // Evitar que o clique no botão acione o onClick do li
-                    // Aqui podemos implementar a lógica para deletar um segmento específico
-                    console.log(`Deletar vídeo ${videoNumber}`);
-                }}>
-                    <span className="material-icons">delete</span>
-                </button>
+                <div className={styles.buttonGroup}>
+                    <button className={styles.button} onClick={(e) => {
+                        e.stopPropagation(); // Evitar que o clique no botão acione o onClick do li
+                        // Implementar a lógica para exportar este segmento específico
+                        if (props.exportSegment) {
+                            props.exportSegment(segment, videoNumber);
+                        }
+                    }} title="Exportar este corte">
+                        <span className="material-icons">download</span>
+                    </button>
+                    <button className={styles.button} onClick={(e) => {
+                        e.stopPropagation(); // Evitar que o clique no botão acione o onClick do li
+                        // Aqui podemos implementar a lógica para deletar um segmento específico
+                        console.log(`Deletar vídeo ${videoNumber}`);
+                    }}>
+                        <span className="material-icons">delete</span>
+                    </button>
+                </div>
             </li>
         );
     };

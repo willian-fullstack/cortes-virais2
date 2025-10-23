@@ -211,43 +211,148 @@ export default function PlaybackController(props: {
     setIsPlaying(false);
   };
 
-  function Render() {
-    let canvas: HTMLCanvasElement | null = props.canvasRef;
+  const Render = async () => {
+    if (isRecordingRef.current) return;
+    isRecordingRef.current = true;
+    recordedChunks = [];
+    const stream = props.canvasRef.captureStream(props.projectFramerate);
+    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    mediaRecorderRef.current = mediaRecorder;
 
-    // Optional frames per second argument.
-    if (canvas != null) {
-      let stream = canvas.captureStream(props.projectFramerate);
-      recordedChunks = [];
-      let options = { mimeType: "video/webm; codecs=vp9" };
-      mediaRecorderRef.current = new MediaRecorder(stream, options);
-      mediaRecorderRef.current.ondataavailable = handleDataAvailable;
-      mediaRecorderRef.current.onstop = download;
-      setCurrentTime(0);
-      isRecordingRef.current = true;
-      mediaRecorderRef.current.start();
-      setIsPlaying(true);
-      renderFrame(true);
-    }
-  }
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
 
-  function handleDataAvailable(event: any) {
-    if (event.data.size > 0) {
-      recordedChunks.push(event.data);
-    }
-  }
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      download(blob, "test.webm");
+      isRecordingRef.current = false;
+    };
 
-  function download() {
-    var blob = new Blob(recordedChunks, {
-      type: "video/webm",
-    });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    document.body.appendChild(a);
+    mediaRecorder.start();
+    setCurrentTime(0);
+    play();
+  };
+
+  const download = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url;
-    a.download = "test.webm";
+    a.download = filename;
     a.click();
-    window.URL.revokeObjectURL(url);
-  }
+    URL.revokeObjectURL(url);
+  };
+
+  // New function to export individual segments
+  const exportSegment = async (segment: Segment, videoNumber: number) => {
+    if (isRecordingRef.current) return;
+    
+    console.log(`Exportando vídeo ${videoNumber}...`);
+    isRecordingRef.current = true;
+    
+    // Set up recording parameters for the segment
+    const segmentStartTime = segment.start;
+    const segmentEndTime = segment.start + segment.duration;
+    const segmentDuration = segment.duration;
+    
+    console.log(`Segment: ${segmentStartTime}ms to ${segmentEndTime}ms (duration: ${segmentDuration}ms)`);
+    
+    recordedChunks = [];
+    const stream = props.canvasRef.captureStream(props.projectFramerate);
+    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    mediaRecorderRef.current = mediaRecorder;
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      download(blob, `video_${videoNumber}.webm`);
+      isRecordingRef.current = false;
+      console.log(`Vídeo ${videoNumber} exportado com sucesso!`);
+    };
+
+    // Start recording
+    mediaRecorder.start();
+    
+    // Set playback to segment start time
+    setCurrentTime(segmentStartTime);
+    
+    // Create a custom render loop for the segment
+    const renderSegmentFrame = async (startTime: number) => {
+      const elapsed = performance.now() - startTime;
+      const currentSegmentTime = segmentStartTime + elapsed;
+      
+      // Check if we've reached the end of the segment
+      if (currentSegmentTime >= segmentEndTime) {
+        mediaRecorder.stop();
+        return;
+      }
+      
+      // Render the current frame
+      _setCurrentTime(currentSegmentTime);
+      
+      // Reset media sources usage
+      for (const media of mediaListRef.current) {
+        if (media && media.sources) {
+          for (const source of media.sources) {
+            source.inUse = false;
+          }
+        }
+      }
+
+      let segments: Segment[] = [];
+      let elements: (HTMLVideoElement | HTMLImageElement | HTMLCanvasElement)[] = [];
+      let needsSeek = false;
+
+      // Process only segments that are active at the current time
+      for (let i = trackListRef.current.length - 1; i >= 0; i--) {
+        for (let j = 0; j < trackListRef.current[i].length; j++) {
+          const currentSegment = trackListRef.current[i][j];
+          if (
+            currentSegmentTime >= currentSegment.start &&
+            currentSegmentTime < currentSegment.start + currentSegment.duration
+          ) {
+            if (currentSegment.media && currentSegment.media.sources) {
+              let source = currentSegment.media.sources.find(
+                (source) => source.track === i
+              );
+              if (source) {
+                source.inUse = true;
+                let mediaTime = currentSegmentTime - currentSegment.start + currentSegment.mediaStart;
+                
+                if (source.element instanceof HTMLVideoElement) {
+                  if (Math.abs(source.element.currentTime * 1000 - mediaTime) > SKIP_THREASHOLD) {
+                    source.element.currentTime = mediaTime / 1000;
+                    needsSeek = true;
+                  }
+                }
+                
+                segments.push(currentSegment);
+                elements.push(source.element);
+              }
+            }
+          }
+        }
+      }
+
+      // Render the frame
+      if (!needsSeek) {
+        props.renderer.drawSegments(segments, elements, currentSegmentTime);
+      }
+      
+      // Continue to next frame
+      requestAnimationFrame(() => renderSegmentFrame(startTime));
+    };
+    
+    // Start the segment rendering loop
+    renderSegmentFrame(performance.now());
+  };
 
   return (
     <Router>
@@ -278,6 +383,7 @@ export default function PlaybackController(props: {
             isPlaying={isPlaying}
             currentTime={currentTime}
             setCurrentTime={setCurrentTime}
+            exportSegment={exportSegment}
           />
         } />
         <Route path="/" element={<Navigate to='/editor' replace />} />

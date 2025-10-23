@@ -40,6 +40,7 @@ export default function Editor(props: {
   setProjectId: (id: string) => void,
   projectUser: string,
   setProjectUser: (user:string) => void,
+  exportSegment?: (segment: Segment, videoNumber: number) => void,
 }) {
   const [scaleFactor, setScaleFactor] = useState<number>(0.1);
   const [needles, setNeedles] = useState<number[]>([]);
@@ -110,6 +111,7 @@ export default function Editor(props: {
           projectDuration={props.projectDuration}
           trackList={props.trackList}
           setCurrentTime={props.setCurrentTime}
+          exportSegment={props.exportSegment}
         />
         <MediaPlayer
           canvasRef={props.canvasRef}
