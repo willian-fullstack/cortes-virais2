@@ -1,5 +1,5 @@
 import styles from "./actions.module.css";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Media, Segment } from "../../model/types";
 import axios from "axios";
 import { Link } from "react-router-dom";
@@ -12,7 +12,7 @@ export default function Actions(props: {
     trackList: Segment[][];
     setProjectUser: (user:string) => void;
 }) {
-    const history = useHistory();
+    const navigate = useNavigate();
 
     const [loadStatus, setLoadStatus] = useState<string>("down");
 
@@ -83,7 +83,7 @@ export default function Actions(props: {
             </button>
             <button
                 className={styles.button}
-                onClick={() => history.push("/about")}
+                onClick={() => navigate("/about")}
                 title="About"
             >
                 <span className="material-icons">help_outline</span>

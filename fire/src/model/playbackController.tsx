@@ -2,7 +2,7 @@ import Editor from "../routes/editor";
 import { Media, Project, Segment, SegmentID, Source, TextStyle } from "./types";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { WebGLRenderer } from "./webgl";
-import { Route, BrowserRouter as Router, Switch, Redirect } from "react-router-dom";
+import { Route, BrowserRouter as Router, Routes, Navigate } from "react-router-dom";
 import About from "../routes/about";
 import ExportPage from "../routes/exportPage";
 import Projects from "../routes/projects";
@@ -80,7 +80,7 @@ export default function PlaybackController(props: {
     }
 
     let segments: Segment[] = [];
-    let elements: (HTMLVideoElement | HTMLImageElement)[] = [];
+    let elements: (HTMLVideoElement | HTMLImageElement | HTMLCanvasElement)[] = [];
     let needsSeek = false;
 
     for (let i = trackListRef.current.length - 1; i >= 0; i--) {
@@ -132,17 +132,17 @@ export default function PlaybackController(props: {
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
 
-        // Only call pause() on video elements, not images
+        // Only call pause() on video elements, not images or canvas
         if (elements[i] instanceof HTMLVideoElement) {
-          elements[i].pause();
+          (elements[i] as HTMLVideoElement).pause();
         }
         let mediaTime = (curTime - segment.start + segment.mediaStart) / 1000;
 
         // Only set currentTime and handle seeking for video elements
-        if (elements[i] instanceof HTMLVideoElement && elements[i].currentTime !== mediaTime) {
+        if (elements[i] instanceof HTMLVideoElement && (elements[i] as HTMLVideoElement).currentTime !== mediaTime) {
           await new Promise<void>((resolve, reject) => {
-            elements[i].onseeked = () => resolve();
-            elements[i].currentTime = mediaTime;
+            (elements[i] as HTMLVideoElement).onseeked = () => resolve();
+            (elements[i] as HTMLVideoElement).currentTime = mediaTime;
           });
         }
       }
@@ -166,7 +166,7 @@ export default function PlaybackController(props: {
 
     if (!isPlayingRef.current) {
       for (const element of elements) {
-        if (element && typeof element.pause === 'function') {
+        if (element instanceof HTMLVideoElement) {
           element.pause();
         }
       }
@@ -251,8 +251,8 @@ export default function PlaybackController(props: {
 
   return (
     <Router>
-      <Switch>
-        <Route path="/export">
+      <Routes>
+        <Route path="/export" element={
           <ExportPage
             Render={Render}
             setCurrentTime={setCurrentTime}
@@ -260,19 +260,17 @@ export default function PlaybackController(props: {
             projectDuration={props.projectDuration}
             currentTime={currentTime}
             isRecordingRef={isRecordingRef}
-          ></ExportPage>
-        </Route>
-        <Route path="/about">
-          <About></About>
-        </Route>
-        <Route path="/projects">
+          />
+        } />
+        <Route path="/about" element={<About />} />
+        <Route path="/projects" element={
           <Projects
             projectUser="user"
             projects={props.projects}
             setProjects={props.setProjects}
           />
-        </Route>
-        <Route path="/editor">
+        } />
+        <Route path="/editor" element={
           <Editor
             {...props}
             playVideo={play}
@@ -281,11 +279,9 @@ export default function PlaybackController(props: {
             currentTime={currentTime}
             setCurrentTime={setCurrentTime}
           />
-        </Route>
-        <Route path="/">
-          <Redirect to='/editor' />
-        </Route>
-      </Switch>
+        } />
+        <Route path="/" element={<Navigate to='/editor' replace />} />
+      </Routes>
     </Router>
   );
 }

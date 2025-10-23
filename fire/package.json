@@ -10,7 +10,7 @@
     "react-beautiful-dnd": "^13.1.0",
     "react-dom": "^17.0.2",
     "react-google-login": "^5.2.2",
-    "react-router-dom": "^5.2.0",
+    "react-router-dom": "^6.30.1",
     "twgl.js": "^4.19.1",
     "web-vitals": "^0.2.4"
   },

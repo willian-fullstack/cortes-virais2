@@ -3,10 +3,10 @@ import styles from "./projects.module.css";
 import axios from "axios";
 import { useState } from "react";
 import { Project } from "../model/types";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Projects(props: { projectUser: string, projects: Project[], setProjects: (projects: Project[]) => void }) {
-  const history = useHistory();
+  const navigate = useNavigate();
 
   function modifyProject(event: any) {
     event.preventDefault();
@@ -106,7 +106,7 @@ export default function Projects(props: { projectUser: string, projects: Project
             style={{
               backgroundImage: `url()`,
             }}
-            onClick={() => { history.push("/editor"); }}
+            onClick={() => { navigate("/editor"); }}
           >
             <div className={styles.boxShadow}>
             <h2>{project.name}</h2>
