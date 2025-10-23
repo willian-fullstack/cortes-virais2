@@ -19,16 +19,16 @@ export const inverseLerp = (value: number, start: number, end: number) => {
 export const calculateProperties = (segment: Segment | null, timestamp: number): KeyFrame => {
     timestamp -= segment ? segment.start : 0;
 
-    const PROPERTY_NAMES = ['x', 'y', 'scaleX', 'scaleY', 'trimLeft', 'trimRight', 'trimBottom', 'trimTop'];
+    const PROPERTY_NAMES = ['x', 'y', 'scaleX', 'scaleY', 'trimLeft', 'trimRight', 'trimBottom', 'trimTop', 'rotation', 'opacity'];
     let properties: Property[] = [];
     for (const property of PROPERTY_NAMES) {
         properties.push(
             {
                 // @ts-ignore
-                start: segment ? segment.keyframes[0][property] ?? 0 : 0,
+                start: segment ? segment.keyframes[0][property] ?? (property === 'opacity' ? 1 : 0) : (property === 'opacity' ? 1 : 0),
                 startTime: 0,
                 //@ts-ignore
-                end: segment ? segment.keyframes[0][property] ?? 0 : 0,
+                end: segment ? segment.keyframes[0][property] ?? (property === 'opacity' ? 1 : 0) : (property === 'opacity' ? 1 : 0),
                 endTime: 0
             }
         )

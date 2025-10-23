@@ -134,6 +134,47 @@
   width: 45px;
 }
 
+.textArea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: var(--media-pool-background-color);
+  color: var(--font-color);
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.textArea:focus {
+  outline: none;
+  border-color: #666;
+}
+
+.colorInput {
+  width: 50px;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.selectInput {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: var(--media-pool-background-color);
+  color: var(--font-color);
+  font-size: 14px;
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: #666;
+}
+
 @media (max-width: 1100px) {
   .container {
     margin-right: 0vw;

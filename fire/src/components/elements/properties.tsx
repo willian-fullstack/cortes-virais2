@@ -23,6 +23,9 @@ export default function Properties({
   const [posState, setPositionState] = useState<boolean>(false);
   const [cropState, setCropState] = useState<boolean>(false);
   const [scaleState, setScaleState] = useState<boolean>(false);
+  const [rotationState, setRotationState] = useState<boolean>(false);
+  const [opacityState, setOpacityState] = useState<boolean>(false);
+  const [proportionalScale, setProportionalScale] = useState<boolean>(true);
 
   const checkKeyframeExists = (): number | false => {
     if (!segment) return false;
@@ -61,6 +64,12 @@ export default function Properties({
           segment.keyframes[currKeyframeIndex].trimRight !== undefined
         )
           return true;
+      } else if (property === "rotation") {
+        if (segment.keyframes[currKeyframeIndex].rotation !== undefined)
+          return true;
+      } else if (property === "opacity") {
+        if (segment.keyframes[currKeyframeIndex].opacity !== undefined)
+          return true;
       }
       return false;
     };
@@ -68,7 +77,9 @@ export default function Properties({
     setPositionState(checkPropState("position"));
     setCropState(checkPropState("crop"));
     setScaleState(checkPropState("scale"));
-  }, [currentTime, segment, checkKeyframeExists]);
+    setRotationState(checkPropState("rotation"));
+    setOpacityState(checkPropState("opacity"));
+  }, [selectedSegment, currentTime]);
 
   const _updateSegment = (args: any, property?: "position" | "scale" | "crop", isButtonPressed?: boolean) => {
     if (!segment || !selectedSegment) return false;
@@ -142,6 +153,8 @@ export default function Properties({
             trimRight: args.trimRight,
             trimTop: args.trimTop,
             trimBottom: args.trimBottom,
+            rotation: args.rotation,
+            opacity: args.opacity,
           },
           ...segment.keyframes.slice(insertPos),
         ],
@@ -149,7 +162,7 @@ export default function Properties({
     }
   };
 
-  const findNextSetKeyframe = (property: "position" | "scale" | "crop") => {
+  const findNextSetKeyframe = (property: "position" | "scale" | "crop" | "rotation" | "opacity") => {
     if (!segment) return null;
 
     for (let i = 0; i < segment.keyframes.length; i++) {
@@ -175,13 +188,25 @@ export default function Properties({
             segment.keyframes[i].trimRight !== undefined
           )
             return i;
+        } else if (property === "rotation") {
+          if (segment.keyframes[i].rotation !== undefined)
+            return i;
+        } else if (property === "opacity") {
+          if (segment.keyframes[i].opacity !== undefined)
+            return i;
+        } else if (property === "rotation") {
+          if (segment.keyframes[i].rotation !== undefined)
+            return i;
+        } else if (property === "opacity") {
+          if (segment.keyframes[i].opacity !== undefined)
+            return i;
         }
       }
     }
     return null;
   };
 
-  const findPrevSetKeyframe = (property: "position" | "scale" | "crop") => {
+  const findPrevSetKeyframe = (property: "position" | "scale" | "crop" | "rotation" | "opacity") => {
     if (!segment) return null;
 
     for (let i = segment.keyframes.length - 1; i >= 0; i--) {
@@ -275,6 +300,31 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ x: (currKeyframe.x ?? 0) - 10 }, "position")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              let startX = e.clientX;
+              let startValue = currKeyframe.x ?? 0;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientX - startX) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaX = e.clientX - startX;
+                  const newValue = startValue - deltaX;
+                  _updateSegment({ x: Math.round(newValue) }, "position");
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >-</button>
           <input
             name="X"
@@ -287,6 +337,31 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ x: (currKeyframe.x ?? 0) + 10 }, "position")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              let startX = e.clientX;
+              let startValue = currKeyframe.x ?? 0;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientX - startX) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaX = e.clientX - startX;
+                  const newValue = startValue + deltaX;
+                  _updateSegment({ x: Math.round(newValue) }, "position");
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >+</button>
         </div>
       </span>
@@ -296,6 +371,31 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ y: (currKeyframe.y ?? 0) - 10 }, "position")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              let startY = e.clientY;
+              let startValue = currKeyframe.y ?? 0;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientY - startY) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaY = e.clientY - startY;
+                  const newValue = startValue + deltaY;
+                  _updateSegment({ y: Math.round(newValue) }, "position");
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >-</button>
           <input
             name="Y"
@@ -308,6 +408,31 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ y: (currKeyframe.y ?? 0) + 10 }, "position")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              let startY = e.clientY;
+              let startValue = currKeyframe.y ?? 0;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientY - startY) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaY = e.clientY - startY;
+                  const newValue = startValue - deltaY;
+                  _updateSegment({ y: Math.round(newValue) }, "position");
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >+</button>
         </div>
       </span>
@@ -369,13 +494,64 @@ export default function Properties({
         >
           <span className="material-icons">keyboard_arrow_left</span>
         </button>
+        <button
+          className={styles.inputBtn}
+          onClick={() => setProportionalScale(!proportionalScale)}
+          style={{ 
+            backgroundColor: proportionalScale ? "#4CAF50" : "#666",
+            marginLeft: "10px",
+            fontSize: "12px"
+          }}
+        >
+          🔗
+        </button>
       </label>
       <span className={styles.effectBox}>
         <label className={styles.tag}>X </label>
         <div className={styles.inputTagBox}>
           <button
             className={styles.inputBtn}
-            onClick={() => _updateSegment({ scaleX: Math.max(+((currKeyframe.scaleX ?? 0) - 0.1).toFixed(2), 0)}, "scale")}
+            onClick={() => {
+              const newValue = Math.max(+((currKeyframe.scaleX ?? 1) - 0.1).toFixed(2), 0);
+              if (proportionalScale) {
+                _updateSegment({ scaleX: newValue, scaleY: newValue }, "scale");
+              } else {
+                _updateSegment({ scaleX: newValue }, "scale");
+              }
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              let startX = e.clientX;
+              let startValueX = currKeyframe.scaleX ?? 1;
+              let startValueY = currKeyframe.scaleY ?? 1;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientX - startX) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaX = (e.clientX - startX) * 0.01;
+                  const newValueX = Math.max(startValueX - deltaX, 0);
+                  if (proportionalScale) {
+                    _updateSegment({ 
+                      scaleX: Math.round(newValueX * 100) / 100, 
+                      scaleY: Math.round(newValueX * 100) / 100 
+                    }, "scale");
+                  } else {
+                    _updateSegment({ scaleX: Math.round(newValueX * 100) / 100 }, "scale");
+                  }
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >-</button>
           <input
             name="height"
@@ -388,7 +564,47 @@ export default function Properties({
           />
           <button
             className={styles.inputBtn}
-            onClick={() => _updateSegment({ scaleX: +((currKeyframe.scaleX ?? 0) + 0.1).toFixed(2) }, "scale")}
+            onClick={() => {
+              const newValue = +((currKeyframe.scaleX ?? 1) + 0.1).toFixed(2);
+              if (proportionalScale) {
+                _updateSegment({ scaleX: newValue, scaleY: newValue }, "scale");
+              } else {
+                _updateSegment({ scaleX: newValue }, "scale");
+              }
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              let startX = e.clientX;
+              let startValueX = currKeyframe.scaleX ?? 1;
+              let startValueY = currKeyframe.scaleY ?? 1;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientX - startX) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaX = (e.clientX - startX) * 0.01;
+                  const newValueX = Math.max(startValueX + deltaX, 0);
+                  if (proportionalScale) {
+                    _updateSegment({ 
+                      scaleX: Math.round(newValueX * 100) / 100, 
+                      scaleY: Math.round(newValueX * 100) / 100 
+                    }, "scale");
+                  } else {
+                    _updateSegment({ scaleX: Math.round(newValueX * 100) / 100 }, "scale");
+                  }
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >+</button>
         </div>
       </span>
@@ -398,6 +614,38 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ scaleY: Math.max(+((currKeyframe.scaleY ?? 0) - 0.1).toFixed(2), 0) }, "scale")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startValueY = currKeyframe.scaleY ?? 1;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientX - startX) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaX = (e.clientX - startX) * 0.01;
+                  const newValueY = Math.max(startValueY - deltaX, 0);
+                  if (proportionalScale) {
+                    _updateSegment({ 
+                      scaleX: Math.round(newValueY * 100) / 100, 
+                      scaleY: Math.round(newValueY * 100) / 100 
+                    }, "scale");
+                  } else {
+                    _updateSegment({ scaleY: Math.round(newValueY * 100) / 100 }, "scale");
+                  }
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >-</button>
           <input
             name="width"
@@ -411,6 +659,38 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ scaleY: +((currKeyframe.scaleY ?? 0) + 0.1).toFixed(2) }, "scale")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startValueY = currKeyframe.scaleY ?? 1;
+              let isDragging = false;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging && Math.abs(e.clientX - startX) > 3) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  const deltaX = (e.clientX - startX) * 0.01;
+                  const newValueY = Math.max(startValueY + deltaX, 0);
+                  if (proportionalScale) {
+                    _updateSegment({ 
+                      scaleX: Math.round(newValueY * 100) / 100, 
+                      scaleY: Math.round(newValueY * 100) / 100 
+                    }, "scale");
+                  } else {
+                    _updateSegment({ scaleY: Math.round(newValueY * 100) / 100 }, "scale");
+                  }
+                }
+              };
+              
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >+</button>
         </div>
       </span>
@@ -485,6 +765,27 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ trimLeft: Math.max(+((currKeyframe.trimLeft ?? 0) - 0.1).toFixed(2), 0) }, "crop")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startValue = currKeyframe.trimLeft ?? 0;
+              let isDragging = true;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging) return;
+                const deltaX = e.movementX;
+                const newValue = Math.max(0, Math.min(1, startValue - deltaX * 0.01));
+                _updateSegment({ trimLeft: +newValue.toFixed(2) }, "crop");
+              };
+              
+              const handleMouseUp = () => {
+                isDragging = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >-</button>
           <input
             name="Left"
@@ -499,6 +800,27 @@ export default function Properties({
           <button
             className={styles.inputBtn}
             onClick={() => _updateSegment({ trimLeft: Math.min(+((currKeyframe.trimLeft ?? 0) + 0.1).toFixed(2), 1) }, "crop")}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startValue = currKeyframe.trimLeft ?? 0;
+              let isDragging = true;
+              
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging) return;
+                const deltaX = e.movementX;
+                const newValue = Math.max(0, Math.min(1, startValue + deltaX * 0.01));
+                _updateSegment({ trimLeft: +newValue.toFixed(2) }, "crop");
+              };
+              
+              const handleMouseUp = () => {
+                isDragging = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+              
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
           >+</button>
         </div>
       </span>
@@ -571,6 +893,433 @@ export default function Properties({
           >+</button>
         </div>
       </span>
+      
+      {/* Rotation Controls */}
+      <label className={styles.tags}>
+        Rotation
+        <button
+          className={styles.keyframeNext}
+          onClick={() => {
+            if (!segment) return;
+
+            let nextKeyframeIndex = findNextSetKeyframe("rotation");
+            setCurrentTime(
+              nextKeyframeIndex == null
+                ? currentTime
+                : segment.start + segment.keyframes[nextKeyframeIndex].start
+            );
+          }}
+        >
+          <span className="material-icons">keyboard_arrow_right</span>
+        </button>
+        <button
+          className={styles.keyframeBtn}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (currentTime === 0) return;
+            if (!rotationState) {
+              _updateSegment({ rotation: currKeyframe.rotation ?? 0 }, undefined, true);
+            } else {
+              _updateSegment({ rotation: undefined }, undefined, true);
+            }
+            setRotationState(!rotationState);
+          }}
+        >
+          <span
+            className="material-icons"
+            style={{ color: rotationState ? "red" : "rgb(102, 102, 102)" }}
+          >
+            circle
+          </span>
+        </button>
+        <button
+          className={styles.keyframePrev}
+          onClick={() => {
+            if (!segment) return;
+
+            let prevKeyframeIndex = findPrevSetKeyframe("rotation");
+            setCurrentTime(
+              prevKeyframeIndex == null
+                ? currentTime
+                : segment.start + segment.keyframes[prevKeyframeIndex].start
+            );
+          }}
+        >
+          <span className="material-icons">keyboard_arrow_left</span>
+        </button>
+      </label>
+      <span className={styles.effectBox}>
+        <label className={styles.tag}>Angle</label>
+        <div className={styles.inputTagBox}>
+          <button
+            className={styles.inputBtn}
+            onClick={() => _updateSegment({ rotation: (currKeyframe.rotation ?? 0) - 15 }, "rotation")}
+          >-</button>
+          <input
+            name="Rotation"
+            className={styles.inputTag}
+            type="number"
+            step="15"
+            onChange={event => _updateSegment({ rotation: +event.target.value }, "rotation")}
+            value={isFinite(currKeyframe.rotation) ? currKeyframe.rotation : 0}
+          />
+          <button
+            className={styles.inputBtn}
+            onClick={() => _updateSegment({ rotation: (currKeyframe.rotation ?? 0) + 15 }, "rotation")}
+          >+</button>
+        </div>
+      </span>
+
+      {/* Opacity Controls */}
+      <label className={styles.tags}>
+        Opacity
+        <button
+          className={styles.keyframeNext}
+          onClick={() => {
+            if (!segment) return;
+
+            let nextKeyframeIndex = findNextSetKeyframe("opacity");
+            setCurrentTime(
+              nextKeyframeIndex == null
+                ? currentTime
+                : segment.start + segment.keyframes[nextKeyframeIndex].start
+            );
+          }}
+        >
+          <span className="material-icons">keyboard_arrow_right</span>
+        </button>
+        <button
+          className={styles.keyframeBtn}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (currentTime === 0) return;
+            if (!opacityState) {
+              _updateSegment({ opacity: currKeyframe.opacity ?? 1 }, undefined, true);
+            } else {
+              _updateSegment({ opacity: undefined }, undefined, true);
+            }
+            setOpacityState(!opacityState);
+          }}
+        >
+          <span
+            className="material-icons"
+            style={{ color: opacityState ? "red" : "rgb(102, 102, 102)" }}
+          >
+            circle
+          </span>
+        </button>
+        <button
+          className={styles.keyframePrev}
+          onClick={() => {
+            if (!segment) return;
+
+            let prevKeyframeIndex = findPrevSetKeyframe("opacity");
+            setCurrentTime(
+              prevKeyframeIndex == null
+                ? currentTime
+                : segment.start + segment.keyframes[prevKeyframeIndex].start
+            );
+          }}
+        >
+          <span className="material-icons">keyboard_arrow_left</span>
+        </button>
+      </label>
+      <span className={styles.effectBox}>
+        <label className={styles.tag}>Alpha</label>
+        <div className={styles.inputTagBox}>
+          <button
+            className={styles.inputBtn}
+            onClick={() => _updateSegment({ opacity: Math.max(+((currKeyframe.opacity ?? 1) - 0.1).toFixed(2), 0) }, "opacity")}
+          >-</button>
+          <input
+            name="Opacity"
+            className={styles.inputTag}
+            type="number"
+            step="0.1"
+            min="0"
+            max="1"
+            onChange={event => _updateSegment({ opacity: +event.target.value }, "opacity")}
+            value={isFinite(currKeyframe.opacity) ? currKeyframe.opacity : 1}
+          />
+          <button
+            className={styles.inputBtn}
+            onClick={() => _updateSegment({ opacity: Math.min(+((currKeyframe.opacity ?? 1) + 0.1).toFixed(2), 1) }, "opacity")}
+          >+</button>
+        </div>
+      </span>
+
+      {/* Text Editing Section */}
+      {segment && segment.media.type === 'text' && (
+        <>
+          <span className={styles.tags}>
+            Text Content
+            <div className={styles.inputContainer}>
+              <textarea
+                className={styles.textArea}
+                value={segment.media.textContent || ''}
+                onChange={(event) => {
+                  const updatedMedia = {
+                    ...segment.media,
+                    textContent: event.target.value
+                  };
+                  const updatedSegment = { ...segment, media: updatedMedia };
+                  regenerateTextCanvas(updatedSegment);
+                  updateSegment(selectedSegment!, updatedSegment);
+                }}
+                placeholder="Digite o texto aqui..."
+                rows={3}
+              />
+            </div>
+          </span>
+
+          {/* Text Style Section */}
+          {segment && segment.media.type === 'text' && segment.media.textStyle && (
+            <>
+              <span className={styles.tags}>
+                Font Size
+                <div className={styles.inputContainer}>
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        fontSize: Math.max(segment.media.textStyle!.fontSize - 2, 8)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >-</button>
+                  <input
+                    className={styles.inputTag}
+                    type="number"
+                    min="8"
+                    max="200"
+                    value={segment.media.textStyle.fontSize}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        fontSize: parseInt(event.target.value) || 16
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        fontSize: Math.min(segment.media.textStyle!.fontSize + 2, 200)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >+</button>
+                </div>
+              </span>
+
+              <span className={styles.tags}>
+                Text Color
+                <div className={styles.inputContainer}>
+                  <input
+                    className={styles.colorInput}
+                    type="color"
+                    value={segment.media.textStyle.color}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        color: event.target.value
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                </div>
+              </span>
+
+              <span className={styles.tags}>
+                Font Family
+                <div className={styles.inputContainer}>
+                  <select
+                    className={styles.selectInput}
+                    value={segment.media.textStyle.fontFamily}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        fontFamily: event.target.value
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Impact">Impact</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                  </select>
+                </div>
+              </span>
+
+              {/* Text Border Section */}
+              <span className={styles.tags}>
+                Text Border Width
+                <div className={styles.inputContainer}>
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderWidth: Math.max((segment.media.textStyle!.borderWidth || 0) - 1, 0)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >-</button>
+                  <input
+                    className={styles.inputTag}
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={segment.media.textStyle.borderWidth || 0}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderWidth: parseInt(event.target.value) || 0
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderWidth: Math.min((segment.media.textStyle!.borderWidth || 0) + 1, 20)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >+</button>
+                </div>
+              </span>
+
+              <span className={styles.tags}>
+                Text Border Color
+                <div className={styles.inputContainer}>
+                  <input
+                    className={styles.colorInput}
+                    type="color"
+                    value={segment.media.textStyle.borderColor || '#000000'}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderColor: event.target.value
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                </div>
+              </span>
+            </>
+          )}
+        </>
+      )}
     </fieldset>
   );
 }
+
+// Function to regenerate text canvas
+const regenerateTextCanvas = (segment: Segment) => {
+  if (segment.media.type !== 'text' || !segment.media.textContent || !segment.media.textStyle) return;
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  if (!ctx) return;
+  
+  // Set canvas size
+  canvas.width = 400;
+  canvas.height = 200;
+  
+  // Apply text style
+  ctx.font = `${segment.media.textStyle.fontSize}px ${segment.media.textStyle.fontFamily}`;
+  ctx.fillStyle = segment.media.textStyle.color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  // Fill background if specified
+  if (segment.media.textStyle.backgroundColor && segment.media.textStyle.backgroundColor !== 'transparent') {
+    ctx.fillStyle = segment.media.textStyle.backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = segment.media.textStyle.color;
+  }
+  
+  // Add border if specified (draw border first, then text)
+  if (segment.media.textStyle.borderWidth && segment.media.textStyle.borderWidth > 0) {
+    ctx.strokeStyle = segment.media.textStyle.borderColor || '#000000';
+    ctx.lineWidth = segment.media.textStyle.borderWidth;
+    ctx.strokeText(segment.media.textContent, canvas.width / 2, canvas.height / 2);
+  }
+  
+  // Draw text (fill text on top of border)
+  ctx.fillText(segment.media.textContent, canvas.width / 2, canvas.height / 2);
+  
+  // Update the element in the media sources
+  if (segment.media.sources[0]) {
+    segment.media.sources[0].element = canvas;
+  }
+  
+  // Update thumbnail
+  segment.media.thumbnail = canvas.toDataURL();
+};

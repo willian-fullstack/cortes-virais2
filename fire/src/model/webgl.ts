@@ -13,6 +13,7 @@ export class WebGLRenderer {
 
     matrixLocation: WebGLUniformLocation;
     textureLocation: WebGLUniformLocation;
+    alphaLocation: WebGLUniformLocation;
 
     positionBuffer: WebGLBuffer;
     texcoordBuffer: WebGLBuffer;
@@ -44,6 +45,7 @@ export class WebGLRenderer {
         // lookup uniforms
         this.matrixLocation = this.context.getUniformLocation(this.program, "u_matrix") as WebGLUniformLocation;
         this.textureLocation = this.context.getUniformLocation(this.program, "u_texture") as WebGLUniformLocation;
+        this.alphaLocation = this.context.getUniformLocation(this.program, "u_alpha") as WebGLUniformLocation;
 
         // Create a buffer to put three 2d clip space points in
         this.positionBuffer = this.context.createBuffer() as WebGLBuffer;
@@ -79,6 +81,10 @@ export class WebGLRenderer {
         // Tell WebGL how to convert from clip space to pixels
         this.context.viewport(0, 0, this.projectWidth, this.projectHeight);
         this.context.clear(this.context.COLOR_BUFFER_BIT);
+
+        // Enable blending for transparency
+        this.context.enable(this.context.BLEND);
+        this.context.blendFunc(this.context.SRC_ALPHA, this.context.ONE_MINUS_SRC_ALPHA);
 
         for (let i = 0; i < segments.length; i++) {
             this.drawImage(segments[i], elements[i], calculateProperties(segments[i], timestamp));
@@ -199,11 +205,22 @@ export class WebGLRenderer {
         let newWidth = elementWidth * (properties.scaleX as number);
         let newHeight = elementHeight * (properties.scaleY as number);
 
-        // this matrix will translate our quad to dstX, dstY
+        // Calculate center position for rotation
+        let centerX = (this.projectWidth / 2) + (properties.x as number);
+        let centerY = (this.projectHeight / 2) + (properties.y as number);
 
+        // this matrix will translate our quad to center position
+        matrix = m4.translate(matrix, [centerX, centerY, 0, 0]);
+
+        // Apply rotation around center
+        if (properties.rotation && (properties.rotation as number) !== 0) {
+            matrix = m4.rotateZ(matrix, (properties.rotation as number) * Math.PI / 180);
+        }
+
+        // Translate to final position accounting for scale and trim
         matrix = m4.translate(matrix, [
-            (this.projectWidth / 2) + ((properties.x as number) - (newWidth / 2)) + newWidth * (properties.trimLeft as number),
-            (this.projectHeight / 2) + ((properties.y as number) - (newHeight / 2)) + newHeight * (properties.trimTop as number), 0, 0]);
+            -(newWidth / 2) * (1 - (properties.trimLeft as number) - (properties.trimRight as number)),
+            -(newHeight / 2) * (1 - (properties.trimTop as number) - (properties.trimBottom as number)), 0, 0]);
 
         // this matrix will scale our 1 unit quad
         // from 1 unit to texWidth, texHeight units
@@ -212,6 +229,10 @@ export class WebGLRenderer {
 
         // Set the matrix.
         this.context.uniformMatrix4fv(this.matrixLocation, false, matrix);
+
+        // Set opacity (alpha) uniform
+        let alpha = properties.opacity !== undefined ? (properties.opacity as number) : 1.0;
+        this.context.uniform1f(this.alphaLocation, alpha);
 
         // Tell the shader to get the texture from texture unit 0
         this.context.uniform1i(this.textureLocation, 0);

@@ -37,6 +37,8 @@ export interface KeyFrame {
     y?: number;
     scaleX?: number;
     scaleY?: number;
+    rotation?: number; // Rotation in degrees
+    opacity?: number; // Opacity from 0 to 1
     trimLeft?: number;
     trimRight?: number
     trimTop?: number;

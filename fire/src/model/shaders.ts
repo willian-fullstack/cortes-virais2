@@ -16,10 +16,12 @@ export let FRAGMENT_SHADER = `
     precision mediump float;
     
     uniform sampler2D u_texture;
+    uniform float u_alpha;
 
     varying vec2 v_texcoord;
 
     void main() {
-       gl_FragColor = texture2D(u_texture, v_texcoord);
+       vec4 texColor = texture2D(u_texture, v_texcoord);
+       gl_FragColor = vec4(texColor.rgb, texColor.a * u_alpha);
     }
 `;
