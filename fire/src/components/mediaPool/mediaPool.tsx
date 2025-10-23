@@ -26,7 +26,7 @@ export default function MediaPool(props: {
     projectDuration: number;
     trackList: Segment[][];
     setCurrentTime: (timestamp: number) => void;
-    exportSegment?: (segment: Segment, videoNumber: number) => void;
+    exportSegment?: (segmentStartTime: number, segmentDuration: number, videoNumber: number) => void;
 }) {
     const [status, setStatus] = useState<string>('');
     const [draggedOn, setDraggedOn] = useState<String>("");
@@ -128,7 +128,7 @@ export default function MediaPool(props: {
                         e.stopPropagation(); // Evitar que o clique no botão acione o onClick do li
                         // Implementar a lógica para exportar este segmento específico
                         if (props.exportSegment) {
-                            props.exportSegment(segment, videoNumber);
+                            props.exportSegment(segment.start, segment.duration, videoNumber);
                         }
                     }} title="Exportar este corte">
                         <span className="material-icons">download</span>

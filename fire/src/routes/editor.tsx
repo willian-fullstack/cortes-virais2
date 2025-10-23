@@ -40,7 +40,9 @@ export default function Editor(props: {
   setProjectId: (id: string) => void,
   projectUser: string,
   setProjectUser: (user:string) => void,
-  exportSegment?: (segment: Segment, videoNumber: number) => void,
+  exportSegment?: (segmentStartTime: number, segmentDuration: number, videoNumber: number) => void,
+  audioEnabled: boolean,
+  toggleAudio: () => void,
 }) {
   const [scaleFactor, setScaleFactor] = useState<number>(0.1);
   const [needles, setNeedles] = useState<number[]>([]);
@@ -129,6 +131,8 @@ export default function Editor(props: {
           splitVideo={props.splitVideo}
           setScaleFactor={setScaleFactor}
           scaleFactor={scaleFactor}
+          audioEnabled={props.audioEnabled}
+          toggleAudio={props.toggleAudio}
         />
         <Properties
           trackList={props.trackList}

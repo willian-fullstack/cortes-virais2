@@ -39,12 +39,14 @@ export default function PlaybackController(props: {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const isRecordingRef = useRef(false);
   const [currentTime, _setCurrentTime] = useState<number>(0);
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
   const trackListRef = useRef(props.trackList);
   const playbackStartTimeRef = useRef(0);
   const lastPlaybackTimeRef = useRef(0);
   const projectDurationRef = useRef(0);
   const mediaListRef = useRef<Media[]>([]);
   const isPlayingRef = useRef(false);
+  const audioEnabledRef = useRef(true);
   const SKIP_THREASHOLD = 100;
   let recordedChunks: Array<any>;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -53,6 +55,7 @@ export default function PlaybackController(props: {
   projectDurationRef.current = props.projectDuration;
   mediaListRef.current = props.mediaList;
   isPlayingRef.current = isPlaying;
+  audioEnabledRef.current = audioEnabled;
 
   const setCurrentTime = useCallback((timestamp: number) => {
     lastPlaybackTimeRef.current = timestamp;
@@ -115,7 +118,6 @@ export default function PlaybackController(props: {
       if (media && media.sources) {
         for (const source of media.sources) {
           if (!source.inUse) {
-            // Only call pause() on video elements, not images
             if (source.element instanceof HTMLVideoElement) {
               source.element.pause();
             }
@@ -132,13 +134,11 @@ export default function PlaybackController(props: {
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
 
-        // Only call pause() on video elements, not images or canvas
         if (elements[i] instanceof HTMLVideoElement) {
           (elements[i] as HTMLVideoElement).pause();
         }
         let mediaTime = (curTime - segment.start + segment.mediaStart) / 1000;
 
-        // Only set currentTime and handle seeking for video elements
         if (elements[i] instanceof HTMLVideoElement && (elements[i] as HTMLVideoElement).currentTime !== mediaTime) {
           await new Promise<void>((resolve, reject) => {
             (elements[i] as HTMLVideoElement).onseeked = () => resolve();
@@ -148,8 +148,8 @@ export default function PlaybackController(props: {
       }
       try {
         await Promise.allSettled(elements.map((element) => {
-          // Only call play() on video elements
           if (element instanceof HTMLVideoElement) {
+            element.muted = !audioEnabledRef.current;
             return element.play();
           }
           return Promise.resolve();
@@ -211,147 +211,340 @@ export default function PlaybackController(props: {
     setIsPlaying(false);
   };
 
+  const toggleAudio = () => {
+    setAudioEnabled(!audioEnabled);
+  };
+
   const Render = async () => {
     if (isRecordingRef.current) return;
+
+    console.log("Starting full recording...");
     isRecordingRef.current = true;
     recordedChunks = [];
-    const stream = props.canvasRef.captureStream(props.projectFramerate);
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+
+    setCurrentTime(0);
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const videoStream = props.canvasRef.captureStream(30);
+    console.log(`Full render canvas stream created with ${videoStream.getVideoTracks().length} video tracks`);
+    
+    const ctx = props.canvasRef.getContext('2d');
+    const imageData = ctx?.getImageData(0, 0, props.canvasRef.width, props.canvasRef.height);
+    const hasContent = imageData && Array.from(imageData.data).some(pixel => pixel !== 0);
+    console.log(`Full render canvas has content: ${hasContent}, dimensions: ${props.canvasRef.width}x${props.canvasRef.height}`);
+    
+    const combinedStream = new MediaStream();
+    
+    const videoTracks = videoStream.getVideoTracks();
+    if (videoTracks.length === 0) {
+      console.error('No video tracks available from canvas for full render!');
+      isRecordingRef.current = false;
+      return;
+    }
+    
+    videoTracks.forEach(track => {
+      console.log(`Full render adding video track: ${track.id}, enabled: ${track.enabled}, readyState: ${track.readyState}`);
+      combinedStream.addTrack(track);
+    });
+    
+    for (const media of mediaListRef.current) {
+      if (media && media.sources) {
+        for (const source of media.sources) {
+          if (source.element instanceof HTMLVideoElement) {
+            try {
+              const audioVideo = document.createElement('video') as HTMLVideoElement;
+              audioVideo.src = (source.element as HTMLVideoElement).src;
+              audioVideo.muted = false;
+              audioVideo.volume = 1.0;
+              
+              if (source.element instanceof HTMLVideoElement) {
+                audioVideo.currentTime = source.element.currentTime;
+              }
+              
+              await new Promise<void>((resolve) => {
+                audioVideo.onloadedmetadata = () => {
+                  if (source.element instanceof HTMLVideoElement) {
+                    audioVideo.currentTime = source.element.currentTime;
+                  }
+                  resolve();
+                };
+              });
+              
+              const audioStream = (audioVideo as any).captureStream ? 
+                (audioVideo as any).captureStream() : 
+                null;
+                
+              if (audioStream) {
+                const audioTracks = audioStream.getAudioTracks();
+                audioTracks.forEach((track: MediaStreamTrack) => {
+                  if (combinedStream.getAudioTracks().length === 0) {
+                    combinedStream.addTrack(track);
+                    console.log('Audio track added to full render');
+                  }
+                });
+              } else {
+                const audioContext = new AudioContext();
+                const sourceNode = audioContext.createMediaElementSource(audioVideo);
+                const destination = audioContext.createMediaStreamDestination();
+                sourceNode.connect(destination);
+                
+                const audioStreamTracks = destination.stream.getAudioTracks();
+                audioStreamTracks.forEach(track => {
+                  if (combinedStream.getAudioTracks().length === 0) {
+                    combinedStream.addTrack(track);
+                    console.log('Audio track added to full render via Web Audio API');
+                  }
+                });
+              }
+            } catch (error) {
+              console.warn('Could not capture audio from video element:', error);
+            }
+          }
+        }
+      }
+    }
+    
+    console.log(`Full render combined stream has ${combinedStream.getVideoTracks().length} video tracks and ${combinedStream.getAudioTracks().length} audio tracks`);
+
+    let mimeType = "video/webm";
+    if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+      mimeType = "video/webm;codecs=vp9";
+    } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+      mimeType = "video/webm;codecs=vp8";
+    } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+      mimeType = "video/mp4";
+    }
+    
+    console.log(`Using MIME type for full render: ${mimeType}`);
+
+    const mediaRecorder = new MediaRecorder(combinedStream, { 
+      mimeType: mimeType,
+      videoBitsPerSecond: 2500000,
+      audioBitsPerSecond: 128000
+    });
     mediaRecorderRef.current = mediaRecorder;
 
     mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
+      if (event.data && event.data.size > 0) {
         recordedChunks.push(event.data);
+        console.log(`Full render data chunk received: ${event.data.size} bytes`);
       }
     };
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      console.log(`Full render recording stopped. Total chunks: ${recordedChunks.length}`);
+      if (recordedChunks.length === 0) {
+        console.error('No data chunks recorded for full render!');
+        isRecordingRef.current = false;
+        return;
+      }
+      
+      const blob = new Blob(recordedChunks, { type: mimeType });
+      console.log(`Full render blob created: ${blob.size} bytes, type: ${blob.type}`);
+      
+      if (blob.size === 0) {
+        console.error('Full render blob is empty!');
+        isRecordingRef.current = false;
+        return;
+      }
+      
       download(blob, "test.webm");
       isRecordingRef.current = false;
     };
 
-    mediaRecorder.start();
-    setCurrentTime(0);
+    mediaRecorder.start(100);
+    console.log(`Full render MediaRecorder started with state: ${mediaRecorder.state}`);
+    
     play();
   };
 
   const download = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    console.log(`Starting download: ${filename}, blob size: ${blob.size} bytes`);
+    
+    if (blob.size === 0) {
+      console.error('Cannot download empty blob');
+      return;
+    }
+    
+    try {
+      const url = URL.createObjectURL(blob);
+      console.log(`Blob URL created: ${url}`);
+      
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        console.log(`Blob URL revoked: ${url}`);
+      }, 1000);
+      
+      console.log(`Download initiated for: ${filename}`);
+    } catch (error) {
+      console.error('Error during download:', error);
+    }
   };
 
-  // New function to export individual segments
-  const exportSegment = async (segment: Segment, videoNumber: number) => {
-    if (isRecordingRef.current) return;
-    
-    console.log(`Exportando vídeo ${videoNumber}...`);
+  const exportSegment = async (segmentStartTime: number, segmentDuration: number, videoNumber: number) => {
+    if (isRecordingRef.current) {
+      console.log('Recording already in progress, skipping...');
+      return;
+    }
+
+    console.log(`Starting segment export: ${segmentStartTime}ms for ${segmentDuration}ms`);
     isRecordingRef.current = true;
-    
-    // Set up recording parameters for the segment
-    const segmentStartTime = segment.start;
-    const segmentEndTime = segment.start + segment.duration;
-    const segmentDuration = segment.duration;
-    
-    console.log(`Segment: ${segmentStartTime}ms to ${segmentEndTime}ms (duration: ${segmentDuration}ms)`);
-    
     recordedChunks = [];
-    const stream = props.canvasRef.captureStream(props.projectFramerate);
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-    mediaRecorderRef.current = mediaRecorder;
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunks.push(event.data);
-      }
-    };
-
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: "video/webm" });
-      download(blob, `video_${videoNumber}.webm`);
-      isRecordingRef.current = false;
-      console.log(`Vídeo ${videoNumber} exportado com sucesso!`);
-    };
-
-    // Start recording
-    mediaRecorder.start();
-    
-    // Set playback to segment start time
-    setCurrentTime(segmentStartTime);
-    
-    // Create a custom render loop for the segment
-    const renderSegmentFrame = async (startTime: number) => {
-      const elapsed = performance.now() - startTime;
-      const currentSegmentTime = segmentStartTime + elapsed;
+    try {
+      setCurrentTime(segmentStartTime);
+      await renderFrame(false);
       
-      // Check if we've reached the end of the segment
-      if (currentSegmentTime >= segmentEndTime) {
-        mediaRecorder.stop();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const gl = props.canvasRef.getContext('webgl');
+      if (!gl) {
+        console.error('WebGL context not available!');
+        isRecordingRef.current = false;
         return;
       }
       
-      // Render the current frame
-      _setCurrentTime(currentSegmentTime);
+      let hasActiveSegments = false;
+      for (let i = trackListRef.current.length - 1; i >= 0; i--) {
+        for (let j = 0; j < trackListRef.current[i].length; j++) {
+          const segment = trackListRef.current[i][j];
+          if (segmentStartTime >= segment.start && segmentStartTime < segment.start + segment.duration) {
+            hasActiveSegments = true;
+            console.log(`Found active segment at time ${segmentStartTime}: track ${i}, segment ${j}`);
+            break;
+          }
+        }
+        if (hasActiveSegments) break;
+      }
       
-      // Reset media sources usage
+      if (!hasActiveSegments) {
+        console.error(`No active segments found at time ${segmentStartTime}ms! Cannot export segment.`);
+        isRecordingRef.current = false;
+        return;
+      }
+      
+      const videoStream = props.canvasRef.captureStream(30);
+      console.log(`Segment canvas stream created with ${videoStream.getVideoTracks().length} video tracks`);
+      
+      const combinedStream = new MediaStream();
+      
+      const videoTracks = videoStream.getVideoTracks();
+      if (videoTracks.length === 0) {
+        console.error('No video tracks available from canvas for segment export!');
+        isRecordingRef.current = false;
+        return;
+      }
+      
+      videoTracks.forEach(track => {
+        console.log(`Segment adding video track: ${track.id}`);
+        combinedStream.addTrack(track);
+      });
+      
       for (const media of mediaListRef.current) {
         if (media && media.sources) {
           for (const source of media.sources) {
-            source.inUse = false;
-          }
-        }
-      }
-
-      let segments: Segment[] = [];
-      let elements: (HTMLVideoElement | HTMLImageElement | HTMLCanvasElement)[] = [];
-      let needsSeek = false;
-
-      // Process only segments that are active at the current time
-      for (let i = trackListRef.current.length - 1; i >= 0; i--) {
-        for (let j = 0; j < trackListRef.current[i].length; j++) {
-          const currentSegment = trackListRef.current[i][j];
-          if (
-            currentSegmentTime >= currentSegment.start &&
-            currentSegmentTime < currentSegment.start + currentSegment.duration
-          ) {
-            if (currentSegment.media && currentSegment.media.sources) {
-              let source = currentSegment.media.sources.find(
-                (source) => source.track === i
-              );
-              if (source) {
-                source.inUse = true;
-                let mediaTime = currentSegmentTime - currentSegment.start + currentSegment.mediaStart;
-                
-                if (source.element instanceof HTMLVideoElement) {
-                  if (Math.abs(source.element.currentTime * 1000 - mediaTime) > SKIP_THREASHOLD) {
-                    source.element.currentTime = mediaTime / 1000;
-                    needsSeek = true;
-                  }
+            if (source.element instanceof HTMLVideoElement && !source.element.muted) {
+              try {
+                const audioStream = (source.element as any).captureStream ? 
+                  (source.element as any).captureStream() : null;
+                  
+                if (audioStream) {
+                  const audioTracks = audioStream.getAudioTracks();
+                  audioTracks.forEach((track: MediaStreamTrack) => {
+                    if (combinedStream.getAudioTracks().length === 0) {
+                      combinedStream.addTrack(track);
+                      console.log('Audio track added to segment export');
+                    }
+                  });
                 }
-                
-                segments.push(currentSegment);
-                elements.push(source.element);
+              } catch (error) {
+                console.warn('Could not capture audio from video element:', error);
               }
             }
           }
         }
       }
+      
+      console.log(`Segment combined stream has ${combinedStream.getVideoTracks().length} video tracks and ${combinedStream.getAudioTracks().length} audio tracks`);
 
-      // Render the frame
-      if (!needsSeek) {
-        props.renderer.drawSegments(segments, elements, currentSegmentTime);
+      let mimeType = "video/webm";
+      if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        mimeType = "video/webm;codecs=vp9";
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+        mimeType = "video/webm;codecs=vp8";
+      } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+        mimeType = "video/mp4";
       }
       
-      // Continue to next frame
-      requestAnimationFrame(() => renderSegmentFrame(startTime));
-    };
-    
-    // Start the segment rendering loop
-    renderSegmentFrame(performance.now());
+      console.log(`Using MIME type for segment: ${mimeType}`);
+
+      const mediaRecorder = new MediaRecorder(combinedStream, { 
+        mimeType: mimeType,
+        videoBitsPerSecond: 2500000,
+        audioBitsPerSecond: 128000
+      });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+          console.log(`Segment data chunk received: ${event.data.size} bytes`);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        console.log(`Segment recording stopped. Total chunks: ${recordedChunks.length}`);
+        if (recordedChunks.length === 0) {
+          console.error('No data chunks recorded for segment!');
+          isRecordingRef.current = false;
+          return;
+        }
+        
+        const blob = new Blob(recordedChunks, { type: mimeType });
+        console.log(`Segment blob created: ${blob.size} bytes, type: ${blob.type}`);
+        
+        if (blob.size === 0) {
+          console.error('Segment blob is empty!');
+          isRecordingRef.current = false;
+          return;
+        }
+        
+        download(blob, `segment_${videoNumber}.webm`);
+        isRecordingRef.current = false;
+        console.log(`Segment ${videoNumber} exported successfully!`);
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error for segment:', event);
+        isRecordingRef.current = false;
+      };
+
+      mediaRecorder.start(100);
+      console.log(`Segment MediaRecorder started with state: ${mediaRecorder.state}`);
+      
+      await play();
+      
+      setTimeout(() => {
+        console.log(`Stopping segment recording after ${segmentDuration}ms`);
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+        pause();
+      }, segmentDuration);
+      
+    } catch (error) {
+      console.error('Error during segment export:', error);
+      isRecordingRef.current = false;
+    }
   };
 
   return (
@@ -384,6 +577,8 @@ export default function PlaybackController(props: {
             currentTime={currentTime}
             setCurrentTime={setCurrentTime}
             exportSegment={exportSegment}
+            audioEnabled={audioEnabled}
+            toggleAudio={toggleAudio}
           />
         } />
         <Route path="/" element={<Navigate to='/editor' replace />} />

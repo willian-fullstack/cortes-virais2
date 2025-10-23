@@ -12,7 +12,9 @@ export default function Controls(
         splitVideo,
         deleteSelectedSegment,
         setScaleFactor,
-        scaleFactor
+        scaleFactor,
+        audioEnabled,
+        toggleAudio
     }:
         {
             playVideo: any,
@@ -24,7 +26,9 @@ export default function Controls(
             setCurrentTime: (timestamp: number) => void,
             deleteSelectedSegment: any
             setScaleFactor: (scale: number) => void,
-            scaleFactor: number
+            scaleFactor: number,
+            audioEnabled: boolean,
+            toggleAudio: () => void
         }
 ) {
     const togglePlaying = () => {
@@ -98,8 +102,10 @@ export default function Controls(
                 onChange={onSeek}
                 value={projectDuration === 0 || !isFinite(currentTime / projectDuration) ? 0 : currentTime / projectDuration}
             ></input>
-            <button className={styles.button} title="Volume">
-                <span className="material-icons">volume_up</span>
+            <button className={styles.button} onClick={toggleAudio} title={audioEnabled ? "Desativar áudio" : "Ativar áudio"}>
+                <span className="material-icons">
+                    {audioEnabled ? "volume_up" : "volume_off"}
+                </span>
             </button>
             <button className={styles.button} onClick={decreaseScale} title="Zoom out">
                 <span className="material-icons">remove</span>
