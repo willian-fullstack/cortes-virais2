@@ -11,6 +11,13 @@ export interface TextStyle {
     borderColor: string;
     borderWidth: number;
     backgroundColor: string;
+    borderRadius: number;
+    borderStyle: 'solid' | 'dashed' | 'dotted' | 'none';
+    padding: number;
+    shadowColor: string;
+    shadowBlur: number;
+    shadowOffsetX: number;
+    shadowOffsetY: number;
 }
 
 export interface Media {

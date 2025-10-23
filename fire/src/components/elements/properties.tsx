@@ -1189,6 +1189,49 @@ export default function Properties({
                 </div>
               </span>
 
+              {/* Background Color Section */}
+              <span className={styles.tags}>
+                Background Color
+                <div className={styles.inputContainer}>
+                  <input
+                    className={styles.colorInput}
+                    type="color"
+                    value={segment.media.textStyle.backgroundColor || '#000000'}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        backgroundColor: event.target.value
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        backgroundColor: 'transparent'
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </span>
+
               {/* Text Border Section */}
               <span className={styles.tags}>
                 Text Border Width
@@ -1271,6 +1314,354 @@ export default function Properties({
                   />
                 </div>
               </span>
+
+              {/* Border Radius Section */}
+              <span className={styles.tags}>
+                Border Radius
+                <div className={styles.inputContainer}>
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderRadius: Math.max((segment.media.textStyle!.borderRadius || 0) - 1, 0)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >-</button>
+                  <input
+                    className={styles.inputTag}
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={segment.media.textStyle.borderRadius || 0}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderRadius: parseInt(event.target.value) || 0
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderRadius: Math.min((segment.media.textStyle!.borderRadius || 0) + 1, 50)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >+</button>
+                </div>
+              </span>
+
+              {/* Padding Section */}
+              <span className={styles.tags}>
+                Padding
+                <div className={styles.inputContainer}>
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        padding: Math.max((segment.media.textStyle!.padding || 0) - 2, 0)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >-</button>
+                  <input
+                    className={styles.inputTag}
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={segment.media.textStyle.padding || 0}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        padding: parseInt(event.target.value) || 0
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        padding: Math.min((segment.media.textStyle!.padding || 0) + 2, 100)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >+</button>
+                </div>
+              </span>
+
+              {/* Border Style Section */}
+              <span className={styles.tags}>
+                Border Style
+                <div className={styles.inputContainer}>
+                  <select
+                    className={styles.inputTag}
+                    value={segment.media.textStyle.borderStyle || 'solid'}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        borderStyle: event.target.value as 'solid' | 'dashed' | 'dotted' | 'none'
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                    <option value="none">None</option>
+                  </select>
+                </div>
+              </span>
+
+              {/* Shadow Section */}
+              <span className={styles.tags}>
+                Shadow Color
+                <div className={styles.inputContainer}>
+                  <input
+                    className={styles.colorInput}
+                    type="color"
+                    value={segment.media.textStyle.shadowColor || '#000000'}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        shadowColor: event.target.value
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                </div>
+              </span>
+
+              {/* Style Presets Section */}
+              <span className={styles.tags}>
+                Style Presets
+                <div className={styles.inputContainer}>
+                  <button
+                    className={styles.button}
+                    onClick={() => {
+                      const buttonStyle = {
+                        ...segment.media.textStyle!,
+                        backgroundColor: '#007bff',
+                        color: '#ffffff',
+                        borderWidth: 2,
+                        borderColor: '#0056b3',
+                        borderRadius: 8,
+                        padding: 12,
+                        borderStyle: 'solid' as const,
+                        shadowBlur: 4,
+                        shadowColor: '#00000040',
+                        shadowOffsetX: 0,
+                        shadowOffsetY: 2
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: buttonStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    Button
+                  </button>
+                  <button
+                    className={styles.button}
+                    onClick={() => {
+                      const badgeStyle = {
+                        ...segment.media.textStyle!,
+                        backgroundColor: '#dc3545',
+                        color: '#ffffff',
+                        borderWidth: 0,
+                        borderRadius: 20,
+                        padding: 8,
+                        borderStyle: 'none' as const,
+                        shadowBlur: 2,
+                        shadowColor: '#00000030',
+                        shadowOffsetX: 0,
+                        shadowOffsetY: 1
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: badgeStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    Badge
+                  </button>
+                  <button
+                    className={styles.button}
+                    onClick={() => {
+                      const cardStyle = {
+                        ...segment.media.textStyle!,
+                        backgroundColor: '#f8f9fa',
+                        color: '#212529',
+                        borderWidth: 1,
+                        borderColor: '#dee2e6',
+                        borderRadius: 6,
+                        padding: 16,
+                        borderStyle: 'solid' as const,
+                        shadowBlur: 6,
+                        shadowColor: '#00000015',
+                        shadowOffsetX: 0,
+                        shadowOffsetY: 3
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: cardStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    Card
+                  </button>
+                  <button
+                    className={styles.button}
+                    onClick={() => {
+                      const outlineStyle = {
+                        ...segment.media.textStyle!,
+                        backgroundColor: 'transparent',
+                        color: '#007bff',
+                        borderWidth: 2,
+                        borderColor: '#007bff',
+                        borderRadius: 8,
+                        padding: 12,
+                        borderStyle: 'solid' as const,
+                        shadowBlur: 0,
+                        shadowColor: 'transparent',
+                        shadowOffsetX: 0,
+                        shadowOffsetY: 0
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: outlineStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >
+                    Outline
+                  </button>
+                </div>
+              </span>
+
+              <span className={styles.tags}>
+                Shadow Blur
+                <div className={styles.inputContainer}>
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        shadowBlur: Math.max((segment.media.textStyle!.shadowBlur || 0) - 1, 0)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >-</button>
+                  <input
+                    className={styles.inputTag}
+                    type="number"
+                    min="0"
+                    max="20"
+                    value={segment.media.textStyle.shadowBlur || 0}
+                    onChange={(event) => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        shadowBlur: parseInt(event.target.value) || 0
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  />
+                  <button
+                    className={styles.inputBtn}
+                    onClick={() => {
+                      const updatedTextStyle = {
+                        ...segment.media.textStyle!,
+                        shadowBlur: Math.min((segment.media.textStyle!.shadowBlur || 0) + 1, 20)
+                      };
+                      const updatedMedia = {
+                        ...segment.media,
+                        textStyle: updatedTextStyle
+                      };
+                      const updatedSegment = { ...segment, media: updatedMedia };
+                      regenerateTextCanvas(updatedSegment);
+                      updateSegment(selectedSegment!, updatedSegment);
+                    }}
+                  >+</button>
+                </div>
+              </span>
             </>
           )}
         </>
@@ -1288,32 +1679,106 @@ const regenerateTextCanvas = (segment: Segment) => {
   
   if (!ctx) return;
   
-  // Set canvas size
-  canvas.width = 400;
-  canvas.height = 200;
+  const style = segment.media.textStyle;
+  const padding = style.padding || 0;
+  const borderWidth = style.borderWidth || 0;
+  const borderRadius = style.borderRadius || 0;
   
-  // Apply text style
-  ctx.font = `${segment.media.textStyle.fontSize}px ${segment.media.textStyle.fontFamily}`;
-  ctx.fillStyle = segment.media.textStyle.color;
+  // Calculate text dimensions
+  ctx.font = `${style.fontSize}px ${style.fontFamily}`;
+  const textMetrics = ctx.measureText(segment.media.textContent);
+  const textWidth = textMetrics.width;
+  const textHeight = style.fontSize;
+  
+  // Calculate canvas size with padding and border
+  canvas.width = Math.max(400, textWidth + (padding * 2) + (borderWidth * 2) + 20);
+  canvas.height = Math.max(200, textHeight + (padding * 2) + (borderWidth * 2) + 20);
+  
+  // Re-apply font after canvas resize
+  ctx.font = `${style.fontSize}px ${style.fontFamily}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
-  // Fill background if specified
-  if (segment.media.textStyle.backgroundColor && segment.media.textStyle.backgroundColor !== 'transparent') {
-    ctx.fillStyle = segment.media.textStyle.backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = segment.media.textStyle.color;
+  // Calculate text position considering padding and border
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  // Calculate background area (considering padding)
+  const bgX = borderWidth;
+  const bgY = borderWidth;
+  const bgWidth = canvas.width - (borderWidth * 2);
+  const bgHeight = canvas.height - (borderWidth * 2);
+  
+  // Apply shadow if specified
+  if (style.shadowBlur && style.shadowBlur > 0) {
+    ctx.shadowColor = style.shadowColor || '#000000';
+    ctx.shadowBlur = style.shadowBlur;
+    ctx.shadowOffsetX = style.shadowOffsetX || 0;
+    ctx.shadowOffsetY = style.shadowOffsetY || 0;
   }
   
-  // Add border if specified (draw border first, then text)
-  if (segment.media.textStyle.borderWidth && segment.media.textStyle.borderWidth > 0) {
-    ctx.strokeStyle = segment.media.textStyle.borderColor || '#000000';
-    ctx.lineWidth = segment.media.textStyle.borderWidth;
-    ctx.strokeText(segment.media.textContent, canvas.width / 2, canvas.height / 2);
+  // Draw background with border radius if specified
+  if (style.backgroundColor && style.backgroundColor !== 'transparent') {
+    ctx.fillStyle = style.backgroundColor;
+    
+    if (borderRadius > 0) {
+      // Draw rounded rectangle background
+      ctx.beginPath();
+      ctx.roundRect(bgX, bgY, bgWidth, bgHeight, borderRadius);
+      ctx.fill();
+    } else {
+      ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+    }
   }
   
-  // Draw text (fill text on top of border)
-  ctx.fillText(segment.media.textContent, canvas.width / 2, canvas.height / 2);
+  // Draw border if specified
+  if (borderWidth > 0 && style.borderStyle !== 'none') {
+    ctx.strokeStyle = style.borderColor || '#000000';
+    ctx.lineWidth = borderWidth;
+    
+    // Set line dash pattern based on border style
+    if (style.borderStyle === 'dashed') {
+      ctx.setLineDash([borderWidth * 3, borderWidth * 2]);
+    } else if (style.borderStyle === 'dotted') {
+      ctx.setLineDash([borderWidth, borderWidth]);
+    } else {
+      ctx.setLineDash([]);
+    }
+    
+    if (borderRadius > 0) {
+      // Draw rounded rectangle border
+      const rectX = borderWidth / 2;
+      const rectY = borderWidth / 2;
+      const rectWidth = canvas.width - borderWidth;
+      const rectHeight = canvas.height - borderWidth;
+      
+      ctx.beginPath();
+      ctx.roundRect(rectX, rectY, rectWidth, rectHeight, borderRadius);
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(borderWidth / 2, borderWidth / 2, canvas.width - borderWidth, canvas.height - borderWidth);
+    }
+    
+    // Reset line dash
+    ctx.setLineDash([]);
+  }
+  
+  // Reset shadow for text
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+  
+  // Draw text border (stroke) if specified
+  if (borderWidth > 0 && style.borderStyle !== 'none') {
+    ctx.strokeStyle = style.borderColor || '#000000';
+    ctx.lineWidth = Math.max(1, borderWidth / 2);
+    ctx.strokeText(segment.media.textContent, centerX, centerY);
+  }
+  
+  // Draw text (fill)
+  ctx.fillStyle = style.color;
+  ctx.fillText(segment.media.textContent, centerX, centerY);
   
   // Update the element in the media sources
   if (segment.media.sources[0]) {
