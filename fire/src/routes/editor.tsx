@@ -9,6 +9,7 @@ import { WebGLRenderer } from "../model/webgl";
 import Properties from "../components/elements/properties";
 import React, { useState } from "react";
 import { DragDropContext } from 'react-beautiful-dnd';
+import CanvasSize, { CanvasSizeType } from "../components/canvasSize/CanvasSize";
 
 export default function Editor(props: {
   canvasRef: HTMLCanvasElement,
@@ -43,6 +44,8 @@ export default function Editor(props: {
   exportSegment?: (segmentStartTime: number, segmentDuration: number, videoNumber: number) => void,
   audioEnabled: boolean,
   toggleAudio: () => void,
+  canvasSize: CanvasSizeType,
+  setCanvasSize: (size: CanvasSizeType) => void,
 }) {
   const [scaleFactor, setScaleFactor] = useState<number>(0.1);
   const [needles, setNeedles] = useState<number[]>([]);
@@ -115,11 +118,17 @@ export default function Editor(props: {
           setCurrentTime={props.setCurrentTime}
           exportSegment={props.exportSegment}
         />
-        <MediaPlayer
-          canvasRef={props.canvasRef}
-          projectWidth={props.projectWidth}
-          projectHeight={props.projectHeight}
-        />
+        <div>
+          <CanvasSize
+            selectedSize={props.canvasSize}
+            onSizeChange={props.setCanvasSize}
+          />
+          <MediaPlayer
+            canvasRef={props.canvasRef}
+            projectWidth={props.projectWidth}
+            projectHeight={props.projectHeight}
+          />
+        </div>
         <Controls
           playVideo={props.playVideo}
           pauseVideo={props.pauseVideo}

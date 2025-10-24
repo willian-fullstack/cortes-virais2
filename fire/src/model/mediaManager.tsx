@@ -3,6 +3,7 @@ import { calculateProperties } from "../utils/utils";
 import PlaybackController from "./playbackController";
 import { Media, Project, Segment, SegmentID, TextStyle } from "./types";
 import { WebGLRenderer } from "./webgl";
+import { CanvasSizeType, CANVAS_SIZES } from "../components/canvasSize/CanvasSize";
 
 export default function MediaManager(props: {
     setProjects: (projects: Project[]) => void;
@@ -27,6 +28,14 @@ export default function MediaManager(props: {
     const [selectedSegment, setSelectedSegment] = useState<SegmentID | null>(null);
     const [canvasRef] = useState<HTMLCanvasElement>(document.createElement("canvas"));
     const [renderer] = useState<WebGLRenderer>(new WebGLRenderer(canvasRef, props.projectWidth, props.projectHeight));
+    const [canvasSize, setCanvasSize] = useState<CanvasSizeType>('desktop');
+
+    // Update project dimensions when canvas size changes
+    useEffect(() => {
+        const size = CANVAS_SIZES[canvasSize];
+        props.setProjectWidth(size.width);
+        props.setProjectHeight(size.height);
+    }, [canvasSize, props.setProjectWidth, props.setProjectHeight]);
 
     useEffect(() => {
         canvasRef.width = props.projectWidth;
@@ -307,6 +316,36 @@ export default function MediaManager(props: {
             (newElement as HTMLVideoElement).pause();
         }
         
+        // Use a simpler approach based on canvas size type instead of complex calculations
+        let initialScale = 1.0;
+        
+        // Simple, reliable scaling based on canvas size
+        if (canvasSize === 'mobile') {
+            if (media.type === 'text') {
+                initialScale = 0.8; // Text readable on mobile
+            } else if (media.file.type.startsWith('image/')) {
+                initialScale = 0.6; // Images visible but not too big on mobile
+            } else {
+                initialScale = 0.7; // Videos visible on mobile
+            }
+        } else if (canvasSize === 'tablet') {
+            if (media.type === 'text') {
+                initialScale = 0.9; // Text readable on tablet
+            } else if (media.file.type.startsWith('image/')) {
+                initialScale = 0.8; // Images appropriate for tablet
+            } else {
+                initialScale = 0.85; // Videos appropriate for tablet
+            }
+        }
+        // Desktop remains at 1.0 for all media types
+        
+        console.log('Simple scaling applied:', {
+            canvasSize,
+            mediaType: media.type,
+            fileType: media.file.type,
+            initialScale
+        });
+        
         let segment: Segment = {
             media: media,
             start: 0,
@@ -322,8 +361,8 @@ export default function MediaManager(props: {
                     trimLeft: 0,
                     trimTop: 0,
                     trimBottom: 0,
-                    scaleX: 1.0,
-                    scaleY: 1.0,
+                    scaleX: initialScale,
+                    scaleY: initialScale,
                 },
             ]
         };
@@ -557,6 +596,8 @@ export default function MediaManager(props: {
             updateSegment={updateSegment}
             splitVideo={split}
             splitAtMultiplePositions={splitAtMultiplePositions}
+            canvasSize={canvasSize}
+            setCanvasSize={setCanvasSize}
         />
     );
 }

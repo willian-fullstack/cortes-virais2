@@ -15,20 +15,68 @@
 @media (max-width: 1100px) {
   .container {
     grid-template-areas:
-      "mediaPool"
-      "elements"
-      "actions"
       "mediaPlayer"
       "controls"
-      "timeline";
+      "timeline"
+      "mediaPool"
+      "elements"
+      "actions";
 
     grid-template-columns: 1fr;
     grid-template-rows:
+      minmax(200px, 40vh)
       min-content
-      min-content
+      minmax(200px, 30vh)
       min-content
       min-content
       min-content;
-    height: auto;
+    height: 100vh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    grid-template-areas:
+      "mediaPlayer"
+      "controls"
+      "timeline"
+      "mediaPool"
+      "elements"
+      "actions";
+
+    grid-template-columns: 1fr;
+    grid-template-rows:
+      minmax(180px, 35vh)
+      min-content
+      minmax(180px, 25vh)
+      min-content
+      min-content
+      min-content;
+    height: 100vh;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    grid-template-areas:
+      "mediaPlayer"
+      "controls"
+      "timeline"
+      "mediaPool"
+      "elements"
+      "actions";
+
+    grid-template-columns: 1fr;
+    grid-template-rows:
+      minmax(160px, 30vh)
+      min-content
+      minmax(160px, 25vh)
+      min-content
+      min-content
+      min-content;
+    height: 100vh;
+    overflow-y: auto;
   }
 }

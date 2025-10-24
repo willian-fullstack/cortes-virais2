@@ -1,0 +1,57 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.sizeSelector {
+  display: flex;
+  gap: 8px;
+  background-color: #2a2a2a;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.sizeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background-color: #3a3a3a;
+  border: 2px solid #555;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ccc;
+}
+
+.sizeButton:hover {
+  background-color: #4a4a4a;
+  border-color: #666;
+  color: #fff;
+}
+
+.sizeButton.active {
+  background-color: #007acc;
+  border-color: #0099ff;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(0, 122, 204, 0.3);
+}
+
+.sizeButton .material-icons {
+  font-size: 24px;
+}
+
+.sizeInfo {
+  text-align: center;
+}
+
+.sizeLabel {
+  font-size: 12px;
+  color: #ccc;
+  font-weight: 500;
+}

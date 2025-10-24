@@ -6,6 +6,7 @@ import { Route, BrowserRouter as Router, Routes, Navigate } from "react-router-d
 import About from "../routes/about";
 import ExportPage from "../routes/exportPage";
 import Projects from "../routes/projects";
+import { CanvasSizeType } from "../components/canvasSize/CanvasSize";
 
 export default function PlaybackController(props: {
   setProjects: (projects: Project[]) => void;
@@ -35,6 +36,8 @@ export default function PlaybackController(props: {
   projectId: string;
   setProjectId: (id: string) => void;
   setProjectDuration: (duration: number) => void;
+  canvasSize: CanvasSizeType;
+  setCanvasSize: (size: CanvasSizeType) => void;
 }) {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const isRecordingRef = useRef(false);
@@ -663,6 +666,8 @@ export default function PlaybackController(props: {
             exportSegment={exportSegment}
             audioEnabled={audioEnabled}
             toggleAudio={toggleAudio}
+            canvasSize={props.canvasSize}
+            setCanvasSize={props.setCanvasSize}
           />
         } />
         <Route path="/" element={<Navigate to='/editor' replace />} />
