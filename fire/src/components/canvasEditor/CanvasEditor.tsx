@@ -76,9 +76,12 @@ export default function CanvasEditor({
     
     if (segment.media.sources[0]?.element) {
       const element = segment.media.sources[0].element;
-      if (element instanceof HTMLVideoElement || element instanceof HTMLImageElement) {
-        elementWidth = element.videoWidth || element.naturalWidth || projectWidth;
-        elementHeight = element.videoHeight || element.naturalHeight || projectHeight;
+      if (element instanceof HTMLVideoElement) {
+        elementWidth = element.videoWidth || projectWidth;
+        elementHeight = element.videoHeight || projectHeight;
+      } else if (element instanceof HTMLImageElement) {
+        elementWidth = element.naturalWidth || projectWidth;
+        elementHeight = element.naturalHeight || projectHeight;
       }
     }
 

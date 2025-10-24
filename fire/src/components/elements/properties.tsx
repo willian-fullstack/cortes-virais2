@@ -81,7 +81,7 @@ export default function Properties({
     setOpacityState(checkPropState("opacity"));
   }, [selectedSegment, currentTime]);
 
-  const _updateSegment = (args: any, property?: "position" | "scale" | "crop", isButtonPressed?: boolean) => {
+  const _updateSegment = (args: any, property?: "position" | "scale" | "crop" | "rotation" | "opacity", isButtonPressed?: boolean) => {
     if (!segment || !selectedSegment) return false;
 
     let insertPos = null;
