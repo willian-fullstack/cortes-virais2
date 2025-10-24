@@ -38,9 +38,9 @@ export default function PlaybackController(props: {
   setProjectDuration: (duration: number) => void;
   canvasSize: CanvasSizeType;
   setCanvasSize: (size: CanvasSizeType) => void;
+  isRecordingRef: React.MutableRefObject<boolean>;
 }) {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const isRecordingRef = useRef(false);
   const [currentTime, _setCurrentTime] = useState<number>(0);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
   const trackListRef = useRef(props.trackList);
@@ -131,8 +131,14 @@ export default function PlaybackController(props: {
     }
 
     if (needsSeek) {
-      if (isRecordingRef.current) {
-        if (mediaRecorderRef.current != null) mediaRecorderRef.current.pause();
+      if (props.isRecordingRef.current) {
+        if (mediaRecorderRef.current != null && mediaRecorderRef.current.state === 'recording') {
+          try {
+            mediaRecorderRef.current.pause();
+          } catch (error) {
+            console.warn('Error pausing MediaRecorder:', error);
+          }
+        }
       }
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
@@ -160,8 +166,14 @@ export default function PlaybackController(props: {
       } catch (error) { }
       lastPlaybackTimeRef.current = curTime;
       playbackStartTimeRef.current = performance.now();
-      if (isRecordingRef.current) {
-        if (mediaRecorderRef.current != null) mediaRecorderRef.current.resume();
+      if (props.isRecordingRef.current) {
+        if (mediaRecorderRef.current != null && mediaRecorderRef.current.state === 'paused') {
+          try {
+            mediaRecorderRef.current.resume();
+          } catch (error) {
+            console.warn('Error resuming MediaRecorder:', error);
+          }
+        }
       }
     }
 
@@ -178,9 +190,9 @@ export default function PlaybackController(props: {
 
     if (curTime === projectDurationRef.current) {
       pause();
-      if (isRecordingRef.current) {
+      if (props.isRecordingRef.current) {
         if (mediaRecorderRef.current != null) mediaRecorderRef.current.stop();
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
       }
       return;
     }
@@ -219,29 +231,43 @@ export default function PlaybackController(props: {
   };
 
   const Render = async () => {
-    if (isRecordingRef.current) return;
+    if (props.isRecordingRef.current) return;
 
     console.log("Starting full recording...");
-    isRecordingRef.current = true;
+    props.isRecordingRef.current = true;
     recordedChunks = [];
 
     setCurrentTime(0);
     await new Promise(resolve => setTimeout(resolve, 100));
 
+    // Temporarily set canvas to project dimensions for high-quality recording
+    const originalWidth = props.canvasRef.width;
+    const originalHeight = props.canvasRef.height;
+    const originalStyle = {
+      width: props.canvasRef.style.width,
+      height: props.canvasRef.style.height
+    };
+
+    // Set canvas to actual project dimensions for recording
+    props.canvasRef.width = props.projectWidth;
+    props.canvasRef.height = props.projectHeight;
+    props.canvasRef.style.width = `${props.projectWidth}px`;
+    props.canvasRef.style.height = `${props.projectHeight}px`;
+
+    // Force a render with the new dimensions
+    await renderFrame(false);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     const videoStream = props.canvasRef.captureStream(30);
     console.log(`Full render canvas stream created with ${videoStream.getVideoTracks().length} video tracks`);
-    
-    const ctx = props.canvasRef.getContext('2d');
-    const imageData = ctx?.getImageData(0, 0, props.canvasRef.width, props.canvasRef.height);
-    const hasContent = imageData && Array.from(imageData.data).some(pixel => pixel !== 0);
-    console.log(`Full render canvas has content: ${hasContent}, dimensions: ${props.canvasRef.width}x${props.canvasRef.height}`);
+    console.log(`Recording at project dimensions: ${props.projectWidth}x${props.projectHeight}`);
     
     const combinedStream = new MediaStream();
     
     const videoTracks = videoStream.getVideoTracks();
     if (videoTracks.length === 0) {
       console.error('No video tracks available from canvas for full render!');
-      isRecordingRef.current = false;
+      props.isRecordingRef.current = false;
       return;
     }
     
@@ -336,9 +362,21 @@ export default function PlaybackController(props: {
 
     mediaRecorder.onstop = () => {
       console.log(`Full render recording stopped. Total chunks: ${recordedChunks.length}`);
+      
+      // Restore original canvas dimensions after recording
+      props.canvasRef.width = originalWidth;
+      props.canvasRef.height = originalHeight;
+      
+      // Restore original styles to maintain the user-defined canvas size
+      props.canvasRef.style.width = originalStyle.width;
+      props.canvasRef.style.height = originalStyle.height;
+      
+      // Force a render with restored dimensions
+      renderFrame(false);
+      
       if (recordedChunks.length === 0) {
         console.error('No data chunks recorded for full render!');
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
         return;
       }
       
@@ -347,12 +385,17 @@ export default function PlaybackController(props: {
       
       if (blob.size === 0) {
         console.error('Full render blob is empty!');
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
         return;
       }
       
-      download(blob, "test.webm");
-      isRecordingRef.current = false;
+      // Generate filename based on canvas size
+      const sizeLabel = props.canvasSize === 'mobile' ? 'mobile' : 
+                       props.canvasSize === 'tablet' ? 'tablet' : 'desktop';
+      const filename = `video_${sizeLabel}_${props.projectWidth}x${props.projectHeight}.webm`;
+      
+      download(blob, filename);
+      props.isRecordingRef.current = false;
     };
 
     mediaRecorder.start(100);
@@ -380,19 +423,68 @@ export default function PlaybackController(props: {
       
       document.body.appendChild(a);
       
-      // Aguardar um pouco antes de clicar para garantir que o link esteja pronto
-      setTimeout(() => {
-        a.click();
-        document.body.removeChild(a);
+      // Use a more reliable approach for download
+      const downloadPromise = new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Download timeout'));
+        }, 30000); // 30 second timeout
         
-        // Aumentar o tempo antes de revogar o URL para evitar ERR_ABORTED
+        // Listen for the download to start
+        const handleClick = () => {
+          console.log(`Download initiated for: ${filename}`);
+          clearTimeout(timeout);
+          resolve();
+        };
+        
+        a.addEventListener('click', handleClick, { once: true });
+        
+        // Trigger the download
         setTimeout(() => {
-          URL.revokeObjectURL(url);
-          console.log(`Blob URL revoked: ${url}`);
-        }, 5000); // Aumentado de 1000ms para 5000ms
-        
-        console.log(`Download initiated for: ${filename}`);
-      }, 100);
+          try {
+            a.click();
+          } catch (clickError) {
+            clearTimeout(timeout);
+            reject(clickError);
+          }
+        }, 100);
+      });
+      
+      downloadPromise
+        .then(() => {
+          // Wait longer before cleanup to ensure download completes
+          setTimeout(() => {
+            try {
+              if (document.body.contains(a)) {
+                document.body.removeChild(a);
+                console.log(`Download link removed for: ${filename}`);
+              }
+            } catch (removeError) {
+              console.warn('Error removing download link:', removeError);
+            }
+            
+            // Wait even longer before revoking URL
+            setTimeout(() => {
+              try {
+                URL.revokeObjectURL(url);
+                console.log(`Blob URL revoked: ${url}`);
+              } catch (revokeError) {
+                console.warn('Error revoking blob URL:', revokeError);
+              }
+            }, 15000); // 15 seconds delay
+            
+          }, 2000); // 2 seconds delay before removing link
+        })
+        .catch((error) => {
+          console.error('Download failed:', error);
+          try {
+            if (document.body.contains(a)) {
+              document.body.removeChild(a);
+            }
+            URL.revokeObjectURL(url);
+          } catch (cleanupError) {
+            console.warn('Error during cleanup:', cleanupError);
+          }
+        });
       
     } catch (error) {
       console.error('Error during download:', error);
@@ -400,7 +492,7 @@ export default function PlaybackController(props: {
   };
 
   const exportSegment = async (segmentStartTime: number, segmentDuration: number, videoNumber: number) => {
-    if (isRecordingRef.current) {
+    if (props.isRecordingRef.current) {
       console.log('Recording already in progress, skipping...');
       return;
     }
@@ -419,10 +511,28 @@ export default function PlaybackController(props: {
       }
     }
     
-    isRecordingRef.current = true;
+    props.isRecordingRef.current = true;
     recordedChunks = [];
 
     try {
+      // Store original canvas dimensions and ALL style properties
+      const originalWidth = props.canvasRef.width;
+      const originalHeight = props.canvasRef.height;
+      const originalStyle = {
+        width: props.canvasRef.style.width,
+        height: props.canvasRef.style.height,
+        aspectRatio: props.canvasRef.style.aspectRatio,
+        maxWidth: props.canvasRef.style.maxWidth,
+        maxHeight: props.canvasRef.style.maxHeight,
+        objectFit: props.canvasRef.style.objectFit
+      };
+
+      // Set canvas to project dimensions for high-quality recording
+      // Only change the internal resolution, not the visual size
+      props.canvasRef.width = props.projectWidth;
+      props.canvasRef.height = props.projectHeight;
+      // Don't change the visual style during recording to prevent UI disruption
+
       // Forçar a posição da agulha para o início do segmento
       setCurrentTime(segmentStartTime);
       
@@ -472,7 +582,7 @@ export default function PlaybackController(props: {
       const gl = props.canvasRef.getContext('webgl');
       if (!gl) {
         console.error('WebGL context not available!');
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
         return;
       }
       
@@ -491,7 +601,7 @@ export default function PlaybackController(props: {
       
       if (!hasActiveSegments) {
         console.error(`No active segments found at time ${segmentStartTime}ms! Cannot export segment.`);
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
         return;
       }
       
@@ -503,7 +613,7 @@ export default function PlaybackController(props: {
       const videoTracks = videoStream.getVideoTracks();
       if (videoTracks.length === 0) {
         console.error('No video tracks available from canvas for segment export!');
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
         return;
       }
       
@@ -566,9 +676,25 @@ export default function PlaybackController(props: {
 
       mediaRecorder.onstop = () => {
         console.log(`Segment recording stopped. Total chunks: ${recordedChunks.length}`);
+        
+        // Restore original canvas dimensions and ALL style properties
+        props.canvasRef.width = originalWidth;
+        props.canvasRef.height = originalHeight;
+        
+        // Restore ALL original styles to maintain the user-defined canvas appearance
+        props.canvasRef.style.width = originalStyle.width;
+        props.canvasRef.style.height = originalStyle.height;
+        props.canvasRef.style.aspectRatio = originalStyle.aspectRatio;
+        props.canvasRef.style.maxWidth = originalStyle.maxWidth;
+        props.canvasRef.style.maxHeight = originalStyle.maxHeight;
+        props.canvasRef.style.objectFit = originalStyle.objectFit;
+        
+        // Force a render with restored dimensions
+        renderFrame(false);
+        
         if (recordedChunks.length === 0) {
           console.error('No data chunks recorded for segment!');
-          isRecordingRef.current = false;
+          props.isRecordingRef.current = false;
           return;
         }
         
@@ -577,12 +703,17 @@ export default function PlaybackController(props: {
         
         if (blob.size === 0) {
           console.error('Segment blob is empty!');
-          isRecordingRef.current = false;
+          props.isRecordingRef.current = false;
           return;
         }
         
-        download(blob, `segment_${videoNumber}.webm`);
-        isRecordingRef.current = false;
+        // Generate filename based on canvas size and segment info
+        const sizeLabel = props.canvasSize === 'mobile' ? 'mobile' : 
+                         props.canvasSize === 'tablet' ? 'tablet' : 'desktop';
+        const filename = `segment_${videoNumber}_${sizeLabel}_${props.projectWidth}x${props.projectHeight}.webm`;
+        
+        download(blob, filename);
+        props.isRecordingRef.current = false;
         // Limpar a referência após o download
         if (mediaRecorderRef.current === mediaRecorder) {
           mediaRecorderRef.current = null;
@@ -592,7 +723,7 @@ export default function PlaybackController(props: {
 
       mediaRecorder.onerror = (event) => {
         console.error('MediaRecorder error for segment:', event);
-        isRecordingRef.current = false;
+        props.isRecordingRef.current = false;
         // Limpar a referência em caso de erro
         if (mediaRecorderRef.current === mediaRecorder) {
           mediaRecorderRef.current = null;
@@ -619,18 +750,46 @@ export default function PlaybackController(props: {
             mediaRecorderRef.current.stop();
           } catch (error) {
             console.error('Error stopping MediaRecorder:', error);
-            isRecordingRef.current = false;
+            props.isRecordingRef.current = false;
           }
         } else {
           console.warn('MediaRecorder is not in recording state when trying to stop');
-          isRecordingRef.current = false;
+          props.isRecordingRef.current = false;
         }
         pause();
       }, segmentDuration);
       
     } catch (error) {
       console.error('Error during segment export:', error);
-      isRecordingRef.current = false;
+      
+      // Restore original canvas dimensions in case of error
+      if (props.canvasRef) {
+        try {
+          props.canvasRef.width = originalWidth;
+          props.canvasRef.height = originalHeight;
+          props.canvasRef.style.width = originalStyle.width;
+          props.canvasRef.style.height = originalStyle.height;
+          props.canvasRef.style.aspectRatio = originalStyle.aspectRatio;
+          props.canvasRef.style.maxWidth = originalStyle.maxWidth;
+          props.canvasRef.style.maxHeight = originalStyle.maxHeight;
+          props.canvasRef.style.objectFit = originalStyle.objectFit;
+          renderFrame(false);
+        } catch (restoreError) {
+          console.warn('Error restoring canvas dimensions:', restoreError);
+        }
+      }
+      
+      props.isRecordingRef.current = false;
+      if (mediaRecorderRef.current) {
+        try {
+          if (mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+          }
+        } catch (stopError) {
+          console.warn('Error stopping MediaRecorder:', stopError);
+        }
+        mediaRecorderRef.current = null;
+      }
     }
   };
 
@@ -644,7 +803,7 @@ export default function PlaybackController(props: {
             trackList={props.trackList}
             projectDuration={props.projectDuration}
             currentTime={currentTime}
-            isRecordingRef={isRecordingRef}
+            isRecordingRef={props.isRecordingRef}
           />
         } />
         <Route path="/about" element={<About />} />

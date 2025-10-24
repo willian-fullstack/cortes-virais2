@@ -30,23 +30,25 @@
     -->
     <title>Fire | Online Video Editor</title>
     <script>
-      // Polyfill for process object to prevent ReferenceError
-      if (typeof global === 'undefined') {
-        var global = globalThis;
-      }
-      if (typeof process === 'undefined') {
-        var process = { 
-          env: {
-            NODE_ENV: 'development'
-          },
-          browser: true,
-          version: '',
-          versions: {},
-          platform: 'browser'
-        };
-      }
-      // Make process available globally
-      window.process = process;
+      // Enhanced polyfill for process object to prevent ReferenceError
+      (function() {
+        if (typeof global === 'undefined') {
+          window.global = window;
+        }
+        if (typeof process === 'undefined') {
+          window.process = { 
+            env: {
+              NODE_ENV: 'development'
+            },
+            browser: true,
+            version: '',
+            versions: {},
+            platform: 'browser'
+          };
+        }
+        // Ensure process is available in global scope
+        global.process = window.process;
+      })();
     </script>
   </head>
   <body>

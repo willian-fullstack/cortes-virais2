@@ -18,7 +18,7 @@ export class WebGLRenderer {
     positionBuffer: WebGLBuffer;
     texcoordBuffer: WebGLBuffer;
 
-    constructor(public canvas: HTMLCanvasElement, public projectWidth: number, public projectHeight: number) {
+    constructor(public canvas: HTMLCanvasElement, public projectWidth: number, public projectHeight: number, public isRecordingRef?: React.MutableRefObject<boolean>) {
         this.context = canvas.getContext("webgl") as WebGLRenderingContext;
         if (!this.context) console.error("Failed to get webgl context!");
 
@@ -78,15 +78,19 @@ export class WebGLRenderer {
     }
 
     public drawSegments(segments: Segment[], elements: (HTMLVideoElement | HTMLImageElement | HTMLCanvasElement)[], timestamp: number) {
-        // Update canvas size to match its display size
-        const displayWidth = this.canvas.clientWidth;
-        const displayHeight = this.canvas.clientHeight;
+        // Check if we're recording using the passed reference
+        const isRecording = this.isRecordingRef?.current || false;
         
-        // Check if the canvas is not the same size as its display size
-        if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
-            // Make the canvas the same size as its display size
-            this.canvas.width = displayWidth;
-            this.canvas.height = displayHeight;
+        if (!isRecording) {
+            const displayWidth = this.canvas.clientWidth;
+            const displayHeight = this.canvas.clientHeight;
+            
+            // Check if the canvas is not the same size as its display size
+            if (this.canvas.width !== displayWidth || this.canvas.height !== displayHeight) {
+                // Make the canvas the same size as its display size
+                this.canvas.width = displayWidth;
+                this.canvas.height = displayHeight;
+            }
         }
         
         // Tell WebGL how to convert from clip space to pixels
@@ -196,6 +200,9 @@ export class WebGLRenderer {
         // this matirx will convert from pixels to clip space
         let matrix = m4.ortho(0, this.canvas.width, this.canvas.height, 0, -1, 1);
 
+        // Check if we're recording to determine which dimensions to use for calculations
+        const isRecording = this.isRecordingRef?.current || false;
+
         // Get dimensions based on element type
         let elementWidth: number;
         let elementHeight: number;
@@ -208,50 +215,41 @@ export class WebGLRenderer {
             elementWidth = element.width;
             elementHeight = element.height;
         } else {
-            // For images, maintain aspect ratio and fit within canvas bounds
-            const naturalWidth = element.naturalWidth;
-            const naturalHeight = element.naturalHeight;
-            
-            // Calculate aspect ratio
-            const aspectRatio = naturalWidth / naturalHeight;
-            const canvasAspectRatio = this.canvas.width / this.canvas.height;
-            
-            // Calculate scale factor to fit image within canvas bounds while maintaining aspect ratio
-            let scaleFactor: number;
-            
-            if (aspectRatio > canvasAspectRatio) {
-                // Image is wider than canvas - scale based on width
-                scaleFactor = this.canvas.width / naturalWidth;
-            } else {
-                // Image is taller than canvas - scale based on height
-                scaleFactor = this.canvas.height / naturalHeight;
-            }
-            
-            // Apply a maximum scale to prevent images from being too large
-            // and a minimum scale to ensure visibility on smaller screens
-            const maxScale = 1.0; // Don't make images larger than their natural size
-            const minScale = 0.1; // Ensure images are at least 10% of their natural size
-            scaleFactor = Math.min(maxScale, Math.max(minScale, scaleFactor));
-            
-            elementWidth = naturalWidth * scaleFactor;
-            elementHeight = naturalHeight * scaleFactor;
-            
-            console.log('Image dimensions calculated:', {
-                original: { width: naturalWidth, height: naturalHeight },
-                calculated: { width: elementWidth, height: elementHeight },
-                aspectRatio,
-                canvasAspectRatio,
-                scaleFactor,
-                canvasSize: { width: this.canvas.width, height: this.canvas.height }
-            });
+            // For image elements, use naturalWidth/naturalHeight
+            elementWidth = element.naturalWidth;
+            elementHeight = element.naturalHeight;
         }
 
         let newWidth = elementWidth * (properties.scaleX as number);
         let newHeight = elementHeight * (properties.scaleY as number);
 
-        // Calculate center position for rotation - use canvas dimensions instead of project dimensions
-        let centerX = (this.canvas.width / 2) + (properties.x as number);
-        let centerY = (this.canvas.height / 2) + (properties.y as number);
+        // Calculate position - use the same logic for both display and recording
+        // This ensures the rendered output is exactly the same as what's shown on canvas
+        let centerX = (this.projectWidth / 2) + (properties.x as number);
+        let centerY = (this.projectHeight / 2) + (properties.y as number);
+
+        // Apply scaling - use the same logic for both display and recording
+        // This ensures the rendered output is exactly the same as what's shown on canvas
+        const scaleX = this.canvas.width / this.projectWidth;
+        const scaleY = this.canvas.height / this.projectHeight;
+        const uniformScale = Math.min(scaleX, scaleY);
+        
+        // Apply uniform scaling to maintain proportions
+        centerX *= uniformScale;
+        centerY *= uniformScale;
+        newWidth *= uniformScale;
+        newHeight *= uniformScale;
+        
+        // Center the content if there's extra space
+        if (scaleX > scaleY) {
+            // Canvas is wider than needed, center horizontally
+            const extraWidth = this.canvas.width - (this.projectWidth * uniformScale);
+            centerX += extraWidth / 2;
+        } else if (scaleY > scaleX) {
+            // Canvas is taller than needed, center vertically
+            const extraHeight = this.canvas.height - (this.projectHeight * uniformScale);
+            centerY += extraHeight / 2;
+        }
 
         // this matrix will translate our quad to center position
         matrix = m4.translate(matrix, [centerX, centerY, 0, 0]);

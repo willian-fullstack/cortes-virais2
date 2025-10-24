@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { calculateProperties } from "../utils/utils";
 import PlaybackController from "./playbackController";
 import { Media, Project, Segment, SegmentID, TextStyle } from "./types";
@@ -27,7 +27,8 @@ export default function MediaManager(props: {
     const [trackList, setTrackList] = useState<Segment[][]>([[]]);
     const [selectedSegment, setSelectedSegment] = useState<SegmentID | null>(null);
     const [canvasRef] = useState<HTMLCanvasElement>(document.createElement("canvas"));
-    const [renderer] = useState<WebGLRenderer>(new WebGLRenderer(canvasRef, props.projectWidth, props.projectHeight));
+    const isRecordingRef = useRef(false);
+    const [renderer] = useState<WebGLRenderer>(new WebGLRenderer(canvasRef, props.projectWidth, props.projectHeight, isRecordingRef));
     const [canvasSize, setCanvasSize] = useState<CanvasSizeType>('desktop');
 
     // Update project dimensions when canvas size changes
@@ -598,6 +599,7 @@ export default function MediaManager(props: {
             splitAtMultiplePositions={splitAtMultiplePositions}
             canvasSize={canvasSize}
             setCanvasSize={setCanvasSize}
+            isRecordingRef={isRecordingRef}
         />
     );
 }
